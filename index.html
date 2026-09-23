@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limbic System</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#111111; --muted:#777;
+    --blue:#0033ff; --green:#33ff33;
+    --wavy:#111; --dash:#22a022;
+    --measure:600px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+    font-size:19px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+
+  /* ---------- article grid ---------- */
+  main{ width:100%; max-width:calc(var(--measure) + 2*200px); margin:0 auto; padding:48px 16px 64px; }
+  .row{ display:grid; grid-template-columns:1fr var(--measure) 1fr; column-gap:24px; align-items:center; }
+  .row p{ grid-column:2; margin:0 0 .35em; text-align:justify; hyphens:auto; -webkit-hyphens:auto; text-align-last:left; }
+
+  /* ---------- highlight system ---------- */
+  .hl{ padding:0 .18em; margin:0 -.02em; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+  .hl.name{ background:var(--ink); color:#fff; font-weight:700; }
+  .hl.green{ background:var(--green); color:var(--ink); font-weight:700; }
+  .hl.blue{ background:var(--blue); color:#fff; font-weight:700; }
+  .hl.name.hollow{ background:transparent; color:var(--ink); box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .term{ font-style:italic; }
+  a.hl{ cursor:pointer; transition:filter .12s }
+  a.hl:hover{ filter:brightness(1.18); box-shadow:0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+  a.hl.hollow:hover{ filter:none; box-shadow:inset 0 0 0 1.5px var(--ink), 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+  a.hl.green:hover{ filter:brightness(1.02); }
+
+  /* pending = page exists in the text, but no live link yet (hollow) */
+  .hl.pending{ background:transparent !important; color:var(--muted); box-shadow:none; outline:1.5px dashed var(--muted); outline-offset:-1.5px; cursor:help; }
+
+  .wavy{ text-decoration:underline wavy var(--wavy); text-decoration-thickness:1px; text-underline-offset:3px; text-decoration-skip-ink:none; }
+  .dash{ text-decoration:underline dashed var(--dash); text-decoration-thickness:1.5px; text-underline-offset:4px; }
+
+  /* ---------- index ---------- */
+  nav.index{ grid-column:2; margin:0 0 40px; display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(4px,1.2vw,8px); font-weight:700; font-size:clamp(10px,3.2vw,16px); }
+  nav.index > div{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  nav.index .lbl{ font-size:clamp(8px,2.4vw,11px); font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  nav.index .hl{ display:block; margin:0; padding:.2em .2em; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ---------- hover tip ---------- */
+  #tip{ position:fixed; z-index:9; pointer-events:none; opacity:0; transform:translate(-50%,-140%);
+        background:var(--ink); color:#fff; font:12px/1 ui-monospace,Menlo,monospace; padding:6px 8px; white-space:nowrap;
+        transition:opacity .1s; }
+  #tip.show{ opacity:1 }
+  #tip.pend{ background:#fff; color:var(--ink); box-shadow:inset 0 0 0 1.5px var(--ink) }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1040px){
+    main{ max-width:calc(var(--measure) + 130px) }
+    .row{ grid-template-columns:1fr var(--measure) 110px; column-gap:16px }
+  }
+  @media (max-width: 800px){
+    :root{ --measure:1fr }
+    body{ font-size:17px }
+    main{ max-width:640px; padding:28px 24px 48px }
+    .row{ grid-template-columns:1fr; }
+    .row p, nav.index{ grid-column:1 }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <!-- index: four destinations as blocks -->
+  <div class="row">
+    <nav class="index" aria-label="Links">
+      <div><span class="lbl">Narrative</span><a class="hl name"        data-page="data">vance.love</a></div>
+      <div><span class="lbl">Pair home</span><a class="hl name hollow"      data-page="zip">vance.zip</a></div>
+      <div><span class="lbl">About</span><a class="hl green"     data-page="info">luvinfo</a></div>
+      <div><span class="lbl">OOC log</span><a class="hl blue"          data-page="log">luvlog</a></div>
+    </nav>
+  </div>
+
+  <!-- ¶1 -->
+  <div class="row" id="overview">
+    <p>The <a class="hl name" data-page="data">limbic system</a>, <a class="hl green" data-page="info">also known as the paleomammalian cortex</a>, is a set of brain structures involved in emotional processing and motivation in humans and many other animals. In humans, it is located on both sides of the <span class="wavy">thalamus</span>, immediately beneath the <span class="wavy">medial temporal lobe</span> of the cerebrum, primarily in the <span class="wavy">forebrain</span>. Its various components support a variety of functions including <span class="dash">emotion</span>, <span class="dash">behavior</span>, <a class="hl blue" data-page="log">long-term memory</a>, and <span class="dash">olfaction</span>. The limbic system is involved in lower-order emotional processing of input from sensory systems and consists of the <span class="wavy">amygdala</span>, mammillary bodies, stria medullaris, central gray, and dorsal and ventral nuclei of Gudden. This <a class="hl name hollow" data-page="zip">processed information</a> is relayed to structures across the telencephalon, diencephalon, and mesencephalon, including the <span class="wavy">prefrontal cortex</span>, cingulate gyrus, limbic thalamus, <span class="wavy">hippocampus</span>, <span class="wavy">nucleus accumbens</span>, anterior hypothalamus, ventral tegmental area, entorhinal cortex, and <span class="wavy">olfactory bulbs</span>.</p>
+  </div>
+
+  <!-- ¶2 -->
+  <div class="row" id="function">
+    <p>The <a class="hl name" data-page="data">limbic system</a> is involved in a broad range of functions, including <span class="dash">emotion</span>, <span class="dash">motivation</span>, <span class="dash">learning</span>, <span class="dash">memory</span>, sensory processing, and autonomic regulation. It forms an important interface between subcortical structures and the cerebral cortex, allowing emotional and motivational states to influence cognition, behavior, and physiological responses. Through its effects on the endocrine and autonomic nervous systems, it also contributes to the regulation of internal bodily states. The limbic system is closely interconnected with several major brain regions, including the <span class="wavy">nucleus accumbens</span>, <span class="wavy">basal ganglia</span>, and <span class="wavy">prefrontal cortex</span>. The nucleus accumbens is particularly associated with <span class="dash">reward</span>, <span class="dash">reinforcement</span>, and motivational processes, while interactions with the basal ganglia contribute to the integration of motivation with action and <a class="hl green" data-page="info">goal-directed behavior</a>. Connections with the prefrontal cortex are involved in emotional regulation, <a class="hl blue" data-page="log">memory consolidation</a>, <span class="dash">decision-making</span>, and <span class="dash">interoception</span>-driven behavior.</p>
+  </div>
+
+  <!-- ¶3 -->
+  <div class="row" id="pairing">
+    <p>Because of these extensive connections, the limbic system does not function as a single isolated emotional center. Rather, it operates as part of a <a class="hl name hollow" data-page="zip">distributed network</a> that integrates affective, cognitive, sensory, and physiological information. Its functional significance therefore extends across emotion, instinct, attention, <a class="hl blue" data-page="log">memory</a>, motivation, autonomic control, and the organization of <a class="hl green" data-page="info">adaptive behavior</a>. In another usage, <em class="term">Limbic System</em> refers to the <a class="hl name hollow" data-page="zip">canon × original character pairing</a> between <a class="hl name" data-page="data">Dr. Vance</a> and <a class="hl name hollow" data-page="zip">Blanc</a> of ARCH. The term is derived from their Korean names, Byeon Jeongwon and Kim Yeonsu: taking one syllable from each name produces <em class="term">Byeon-Yeon</em>, corresponding to the Korean term for the limbic system, <em class="term">byeon-yeon-gye</em>. The name therefore carries both a linguistic and thematic significance, linking the neurological concept of the limbic system with the relationship between the two characters.</p>
+  </div>
+
+  <!-- ¶4 -->
+  <div class="row" id="dynamic">
+    <p>The name also reflects the thematic dynamic between the two characters. <a class="hl name" data-page="data">Dr. Vance</a> is characterized by a <a class="hl green" data-page="info">strongly rational, analytical, and logic-oriented disposition</a>, whereas <a class="hl name hollow" data-page="zip">Blanc</a> is more prone to <span class="dash">emotional</span>, <span class="dash">intuitive</span>, and at times <span class="dash">irrational</span> behavior. In this respect, their relationship functions as a metaphorical parallel to the interaction between higher-order cognitive control and limbic emotional processing. Blanc introduces <a class="hl blue" data-page="log">affective impulses</a>, attachment, and emotional variability into <a class="hl name" data-page="data">Dr. Vance</a>’s otherwise <a class="hl green" data-page="info">highly regulated mode of thought</a>, while <a class="hl name" data-page="data">Dr. Vance</a> in turn attempts to interpret, contain, and rationalize those responses. Beyond the <a class="hl blue" data-page="log">wordplay</a> formed by their names, <em class="term">Limbic System</em> describes the way Blanc gradually becomes integrated into <a class="hl name" data-page="data">Dr. Vance</a>’s emotional and motivational processes, influencing judgments and behaviors that he would otherwise approach through <a class="hl green" data-page="info">detached reasoning</a> alone. Their relationship can thus be read as an externalized representation of the tension and interaction between rational regulation and emotional drive.</p>
+  </div>
+
+</main>
+
+<div id="tip" role="status" aria-hidden="true"></div>
+
+<script>
+/* ---------------------------------------------------------------
+   Link registry. Flip `live` to false for a page that isn't
+   connected yet: its text block turns hollow
+   and the click is disabled with a "not yet linked" tip.
+   --------------------------------------------------------------- */
+const PAGES = {
+  data : { url:'https://vance.love',        host:'vance.love',      live:true  },  // 관계성 서사 → black block (Dr. Vance, relationship)
+  info : { url:'https://vance.luvinfo.me',  host:'vance.luvinfo.me', live:true },  // 자기소개 성향글 → green block
+  zip  : { url:'https://vance.zip',         host:'vance.zip',        live:true },  // 페어홈·아카이브 → hollow block (Blanc, pairing, information)
+  log  : { url:'https://vance.luvlog.me',   host:'vance.luvlog.me',  live:true },  // OOC 백업·포스팅 → blue block
+};
+
+const tip = document.getElementById('tip');
+function showTip(el, text, pend){
+  const r = el.getBoundingClientRect();
+  tip.textContent = text;
+  tip.style.left = (r.left + r.width/2) + 'px';
+  tip.style.top  = r.top + 'px';
+  tip.classList.toggle('pend', !!pend);
+  tip.classList.add('show');
+}
+function hideTip(){ tip.classList.remove('show'); }
+
+/* text links */
+document.querySelectorAll('.hl[data-page]').forEach(el => {
+  const p = PAGES[el.dataset.page];
+  if (!p) return;
+  const isLink = p.live && p.url && el.tagName === 'A';
+  if (isLink){
+    el.href = p.url; el.target = '_blank'; el.rel = 'noopener';
+    el.setAttribute('title', p.host);
+    el.addEventListener('mouseenter', () => showTip(el, p.host + ' ↗'));
+  } else {
+    el.classList.add('pending');
+    el.removeAttribute('href');
+    el.setAttribute('title', 'not yet linked');
+    el.addEventListener('mouseenter', () => showTip(el, 'not yet linked', true));
+  }
+  el.addEventListener('mouseleave', hideTip);
+});
+
+/* key: fill in hosts */
+document.querySelectorAll('[data-host]').forEach(td => {
+  const p = PAGES[td.dataset.host]; if (!p) return;
+  td.textContent = p.live ? p.host : p.host + ' (soon)';
+});
+</script>
+</body>
+</html>
