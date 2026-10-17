@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIMBIC · FEED</title>
+<!--
+  모드 A 관제실 위젯 — 한 파일을 ?w= 로 나눠 쓴다. vance.love 에 올려 luvlog HTML 위젯에 iframe 으로 넣는다.
+    ?w=main                 메인 뷰포트 (헤더 위 띠) — 창 너머 감시 화면 · 탐색 박스 → 인물 고정 · 클릭 프로필
+    ?w=cam&cam=1&n=3        CCTV — 접속마다 n 대 중 한 대에만 인물. 가까이 갈수록 선명, 고정된 인물 클릭 → 돌아봄 + 말풍선
+    ?w=signal&n=3           신호 — 동그라미 3개 + 캠 궤도도 + 경고문. 들키면 빨간 ALERT
+    ?w=graph                실시간 그래프 — 들키면 빨간 스파이크
+  위젯끼리는 BroadcastChannel('limbic-a') 로 신호를 주고받는다 (같은 vance.love 출처 iframe 끼리만).
+  디버그: &force=1 (이 캠에 인물) &look=1 (돌아본 상태) &aware=1 (빨간 경보) &mx=50&my=40 (마우스 위치 % 고정) &who=blanc[&pop=1]
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --g:#39ff14; --r:#ff2a3a; --y:#ffd21f;
+    --w:#eef0ea; --w6:rgba(238,240,234,.6); --w4:rgba(238,240,234,.4); --w2:rgba(238,240,234,.2); --w1:rgba(238,240,234,.1);
+    --bg:#050605;
+    --sa:'Inter Tight',sans-serif; --mo:'IBM Plex Mono',ui-monospace,monospace; --ko:'IBM Plex Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);overflow:hidden;color:var(--w);font-family:var(--mo)}
+  body{-webkit-font-smoothing:antialiased;user-select:none}
+  .w{position:relative;width:100%;height:100%;overflow:hidden}
+  .mono{font:400 9px/1.4 var(--mo);letter-spacing:.14em;text-transform:uppercase}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g);vertical-align:1px;margin-right:7px}
+  .dot.r{background:var(--r);box-shadow:0 0 6px var(--r);animation:blink 1.2s steps(1) infinite}
+  @keyframes blink{50%{opacity:.15}}
+  .abs{position:absolute;z-index:6;pointer-events:none}
+
+  /* 감지 박스 — 탐색(흰 꺾쇠)이 마우스를 따라다니다 인물에 끌려가 초록으로 고정 */
+  .tgt{position:absolute;z-index:7;pointer-events:none;opacity:0;transition:opacity .15s;--c:var(--w6);--k:8px;--t:1px}
+  .tgt.on{opacity:1}
+  .tgt::before{content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(var(--c),var(--c)) 0 0/var(--k) var(--t), linear-gradient(var(--c),var(--c)) 0 0/var(--t) var(--k),
+      linear-gradient(var(--c),var(--c)) 100% 0/var(--k) var(--t), linear-gradient(var(--c),var(--c)) 100% 0/var(--t) var(--k),
+      linear-gradient(var(--c),var(--c)) 0 100%/var(--k) var(--t), linear-gradient(var(--c),var(--c)) 0 100%/var(--t) var(--k),
+      linear-gradient(var(--c),var(--c)) 100% 100%/var(--k) var(--t), linear-gradient(var(--c),var(--c)) 100% 100%/var(--t) var(--k);
+    background-repeat:no-repeat}
+  .tgt::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;transform:translate(-50%,-50%);
+    background:linear-gradient(var(--c),var(--c)) 50% 0/1px 100% no-repeat,linear-gradient(var(--c),var(--c)) 0 50%/100% 1px no-repeat}
+  .tgt.lock{--c:var(--g);--k:14px;--t:1.5px}
+  .tgt.lock::before{outline:1px solid rgba(57,255,20,.25);outline-offset:-1px}
+  .tgt.red{--c:var(--r)}
+  /* 이름표 = 박스 왼쪽 위 바깥 / 보조 글자(SUBJECT · CONF) = 박스 오른쪽 아래 바깥. 자리가 없을 때만 반대편(역시 바깥)으로 */
+  .tag{position:absolute;left:0;bottom:calc(100% + 5px);white-space:nowrap}
+  .tgt.in .tag{bottom:auto;top:calc(100% + 5px)}
+  .meta{position:absolute;right:0;top:calc(100% + 5px);display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:nowrap}
+  .tgt.bt .meta{top:auto;bottom:calc(100% + 5px);flex-direction:column-reverse}
+  .tag b{font:400 9px/1 var(--mo);letter-spacing:.16em;color:var(--c);text-shadow:0 0 3px #000,0 1px 2px #000}
+  .tgt.lock .tag b,.tgt.red .tag b{font:600 10.5px/1 var(--sa);letter-spacing:.06em;background:var(--c);color:#000;padding:3px 6px 3px;text-shadow:none;display:inline-block}
+  .tgt.red .tag b{color:#fff}
+  .meta small,.meta .cf{font:400 8.5px/1 var(--mo);letter-spacing:.14em;color:var(--c);text-shadow:0 0 3px #000,0 1px 2px #000,0 0 6px rgba(0,0,0,.8)}
+  .meta small:empty,.tgt.red .cf{display:none}
+
+  /* ── MAIN · 창 너머 감시 화면 ───────────────────────── */
+  .mon{background:#030303;cursor:crosshair}
+  .out{position:absolute;z-index:2;color:var(--w4)}
+  .win{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(80%,1120px);height:84%;border-radius:clamp(26px,4.6vw,64px);overflow:hidden;background:#000;
+    box-shadow:0 0 0 9px #0b0c0b,0 0 0 10px rgba(238,240,234,.07),0 40px 90px rgba(0,0,0,.9);transition:box-shadow .3s}
+  .mon.aw .win{box-shadow:0 0 0 9px #0b0c0b,0 0 0 10px rgba(255,42,58,.6),0 0 60px rgba(255,42,58,.25)}
+  .win::after{content:"";position:absolute;inset:0;z-index:5;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 90px rgba(0,0,0,.85),inset 0 0 0 1px rgba(238,240,234,.08)}
+  .feed{position:absolute;inset:0;transition:filter .6s}
+  .feed img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;display:block;filter:grayscale(.92) contrast(1.08) brightness(.66)}
+  .feed::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(40,70,72,.35),transparent 45%,rgba(0,0,0,.55))}
+  .mon:not(.live) .feed{filter:blur(10px) brightness(.8)}
+  /* HUD — 위에서부터 차례로 쌓는 구조(글자가 커지면 선이 밀려남 → 겹치지 않음). 글자 크기는 창 폭·높이 중 작은 쪽 기준 */
+  .hud{position:absolute;inset:0;z-index:6;pointer-events:none;display:flex;flex-direction:column;padding:4.6% 7% 5%}
+  .h-top{display:flex;flex-direction:column}
+  .compass{position:relative;align-self:center;width:44%;text-align:center;margin-bottom:clamp(6px,2.2vh,16px)}
+  .compass .k{position:relative;height:9px;margin-top:5px;background:repeating-linear-gradient(90deg,var(--w4) 0 1px,transparent 1px 8px) 0 100%/100% 4px no-repeat,repeating-linear-gradient(90deg,var(--w) 0 1px,transparent 1px 40px) 0 100%/100% 9px no-repeat}
+  .compass .k::after{content:"";position:absolute;left:50%;bottom:-9px;width:0;height:0;border:4px solid transparent;border-top-color:var(--w);transform:translateX(-50%)}
+  .compass .l{display:flex;justify-content:space-between;margin-top:4px;color:var(--w6)}
+  .h-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+  .rule{height:1px;background:var(--w2);flex:none}
+  .h-top .rule{margin-top:clamp(6px,1.6vh,12px)}
+  .lbl{margin-top:6px;color:var(--w6)}
+  .big{font:500 clamp(22px,min(4vw,8.6vh),54px)/1 var(--sa);letter-spacing:-.02em}
+  .name{font:500 clamp(28px,min(5.6vw,11.5vh),78px)/.95 var(--sa);letter-spacing:-.03em;transition:color .2s}
+  .name em{font:500 8.5px/1 var(--mo);font-style:normal;letter-spacing:.14em;background:var(--g);color:#000;padding:2px 5px;margin-left:10px;vertical-align:middle;position:relative;top:-.6em}
+  .mon.aw .name em{background:var(--r);color:#fff}
+  .route{margin-top:clamp(6px,1.4vh,10px);color:var(--w6)}
+  .wave{position:relative;height:clamp(14px,5vh,36px);margin-top:clamp(6px,1.6vh,12px)}
+  .wave canvas{width:100%;height:100%;display:block}
+  /* 가운데 — 남는 높이를 차지하는 빈 여백 */
+  .mid{flex:1;min-height:24px}
+  .h-bot{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm nm" "rl rl" "dd dt";align-items:end}
+  .h-bot .nmw{grid-area:nm;min-width:0}
+  .h-bot > .rule{grid-area:rl;margin:clamp(8px,2.2vh,18px) 0 clamp(8px,2vh,16px)}
+  .h-bot .dd{grid-area:dd}
+  .h-bot .dt{grid-area:dt}
+  .dt{display:grid;grid-template-columns:auto auto auto auto;gap:5px 18px;align-items:baseline}
+  .dt dt{color:var(--w4)} .dt dd{color:var(--w);text-align:right}
+  .dt dd.on{background:var(--w);color:#000;padding:0 4px}
+  .alert{position:absolute;left:50%;top:5%;transform:translateX(-50%);opacity:0;color:var(--r);transition:opacity .2s}
+  .mon.aw .alert{opacity:1}
+  .subj b{display:block;font:500 18px/1.2 var(--sa);letter-spacing:0;transition:font-size .4s}
+  .big,.name{text-shadow:0 1px 3px rgba(0,0,0,.4)}
+
+  /* 호버(live) — 장식 줄은 접혀 사라지고, 시계는 위 · 이름은 맨 아래로 작게 */
+  .fx{transition:opacity .3s,max-height .4s cubic-bezier(.2,.8,.2,1),margin .4s cubic-bezier(.2,.8,.2,1);max-height:90px}
+  .big,.name{transition:font-size .4s cubic-bezier(.2,.8,.2,1),color .2s}
+  .mon.live .fx,.mon.aw .compass{opacity:0}
+  .mon.live .h-top .fx,.mon.live .h-bot .fx{max-height:0;margin-top:0;margin-bottom:0;overflow:hidden}
+  .mon.live .big{font-size:15px}
+  .mon.live .subj b{font-size:11px;font-weight:400;font-family:var(--mo);letter-spacing:.12em;text-transform:uppercase;color:var(--w6)}
+  .mon.live .name{font-size:19px;letter-spacing:-.01em}
+  .mon.live .name em{top:-.15em;margin-left:8px}
+  .mon.live .h-bot{grid-template-areas:"nm dt"}
+  .mon.live .h-bot .dd{display:none}
+  .mon.live .dt{gap:3px 14px;opacity:.8}
+
+  .mon.aw .alert{opacity:1}
+  .card{position:absolute;right:2.2%;bottom:5%;z-index:3;width:118px;border:1px solid var(--w2);background:#050605;color:var(--w6);font:400 8px/1 var(--mo);letter-spacing:.1em}
+  .card div{display:flex;justify-content:space-between;padding:5px 7px;border-bottom:1px solid var(--w1)}
+  .card b{font:500 22px/1 var(--sa);color:var(--w);letter-spacing:-.02em}
+  .card .bc{height:16px;margin:6px 7px;background:repeating-linear-gradient(90deg,var(--w6) 0 1px,transparent 1px 3px,var(--w6) 3px 5px,transparent 5px 6px,var(--w6) 6px 6.5px,transparent 6.5px 9px)}
+  /* 클릭 팝업 — 여러 조각의 유리: 탭·원형 홈·옆 홈이 있는 본체 + 초록 틴트 판 + 회전 배지 + 알약 태그 */
+  .pop{position:absolute;z-index:9;top:50%;width:320px;height:350px;transform:translate(0,-46%) scale(calc(var(--s) * .97));opacity:0;pointer-events:none;
+    transition:opacity .22s,transform .3s cubic-bezier(.2,.8,.2,1);color:var(--w)}
+  .pop{--s:1;transform-origin:0 50%}
+  .pop.on{opacity:1;pointer-events:auto;transform:translate(0,-50%) scale(var(--s))}
+  .gl{position:absolute;-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%)}
+  .gl-main{inset:0;background:linear-gradient(140deg,rgba(255,255,255,.2),rgba(255,255,255,.06) 48%,rgba(255,255,255,.1))}
+  .gl-main::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.2),transparent 30%)}
+  .gl-edge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:3}
+  .gl-edge path{fill:none;stroke:rgba(255,255,255,.45);stroke-width:1}
+  .gl-tint{left:-30px;top:118px;width:64px;display:flex;align-items:center;padding:20px 0 20px 9px;border-radius:14px;background:linear-gradient(160deg,rgba(57,255,20,.32),rgba(57,255,20,.1));
+    border:1px solid rgba(57,255,20,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+  .gl-tint span{writing-mode:vertical-rl;transform:rotate(180deg);color:rgba(220,255,210,.9);line-height:1;letter-spacing:.18em}
+  .gl-badge{right:-18px;top:-16px;width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.4);z-index:4;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 10px 30px rgba(0,0,0,.35)}
+  .gl-badge svg{width:100%;height:100%;animation:spin 16s linear infinite}
+  .gl-badge text{font:500 7.6px var(--mo);letter-spacing:.2em;fill:rgba(255,255,255,.85)}
+  .gl-badge{pointer-events:auto}
+  .gl-badge .bx{all:unset;position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border:1.5px solid var(--w);border-radius:50%;cursor:pointer;
+    display:grid;place-items:center;font:400 13px/1 var(--mo);color:var(--w);transition:background .15s,transform .2s}
+  .gl-badge .bx:hover{background:rgba(255,255,255,.22);transform:rotate(90deg)}
+  .gl-badge b{position:absolute;right:16px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--r);box-shadow:0 0 8px var(--r)}
+  .gl-pill{right:26px;bottom:-17px;height:34px;padding:0 14px;display:flex;align-items:center;gap:12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4);z-index:4;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 10px 24px rgba(0,0,0,.35);color:rgba(255,255,255,.85)}
+  .gl-pill i{width:62px;height:14px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.8) 0 1px,transparent 1px 3px,rgba(255,255,255,.8) 3px 5px,transparent 5px 6px,rgba(255,255,255,.8) 6px 6.5px,transparent 6.5px 9px)}
+  .pc{position:absolute;inset:0;z-index:2}
+  .g-hd{position:absolute;left:14px;top:0;width:150px;height:26px;display:flex;align-items:center;color:rgba(255,255,255,.85);white-space:nowrap}
+  /* 카드 안 — 왼쪽: 큰 사진 + 번호 / 오른쪽: 이름 · 소속 · 정보 */
+  .px{all:unset;pointer-events:auto;cursor:pointer;width:18px;height:18px;margin-left:8px;border-radius:50%;border:1px solid rgba(255,255,255,.5);display:grid;place-items:center;font:400 9px/1 var(--mo);color:var(--w)}
+  .px:hover{background:rgba(255,255,255,.18)}
+  .pf{position:absolute;left:18px;top:44px;width:106px;height:244px;border-radius:14px;background-size:cover;background-position:50% 18%;filter:grayscale(1) contrast(1.08);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+  .pf::after{content:"";position:absolute;inset:6px;border-radius:9px;pointer-events:none;
+    background:linear-gradient(var(--w),var(--w)) 0 0/8px 1px,linear-gradient(var(--w),var(--w)) 0 0/1px 8px,linear-gradient(var(--w),var(--w)) 100% 0/8px 1px,linear-gradient(var(--w),var(--w)) 100% 0/1px 8px,
+      linear-gradient(var(--w),var(--w)) 0 100%/8px 1px,linear-gradient(var(--w),var(--w)) 0 100%/1px 8px,linear-gradient(var(--w),var(--w)) 100% 100%/8px 1px,linear-gradient(var(--w),var(--w)) 100% 100%/1px 8px;background-repeat:no-repeat;opacity:.8}
+  .g-id{position:absolute;left:18px;top:204px;width:106px}
+  .g-id small{display:block;margin-bottom:5px;color:rgba(255,255,255,.6)}
+  .g-id b{display:block;font:500 46px/.9 var(--sa);letter-spacing:-.04em}
+  .g-cls{position:absolute;left:140px;top:44px;background:var(--r);color:#fff;padding:3px 6px;letter-spacing:.14em}
+  .pb{position:absolute;left:140px;right:18px;top:96px}
+  .pb h3{font:500 27px/1 var(--sa);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb .kr{font:500 10px/1.3 var(--mo);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);margin:7px 0 0;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.22)}
+  .pb dl{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;margin-top:12px;letter-spacing:.05em}
+  .pb dt{color:rgba(255,255,255,.55)} .pb dd{color:var(--w);min-width:0;overflow-wrap:anywhere}
+  .pb dd.gg{color:var(--g)}
+  .haz{position:absolute;left:140px;right:24px;bottom:34px;height:11px;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.85) 0 6px,transparent 6px 12px);border-radius:2px}
+  .g-hd .px{display:none}
+  /* 좁은 화면에서도 배지 · 틴트 판은 유지 — 팝업 전체가 --s 로 축소됨 */
+  .wire{position:absolute;inset:0;z-index:8;pointer-events:none;width:100%;height:100%;opacity:0;transition:opacity .25s}
+  .wire.on{opacity:1}
+  .wire path{fill:none;stroke:rgba(238,240,234,.75);stroke-width:1}
+  .wire circle{fill:#000;stroke:var(--w);stroke-width:1.2}
+  .wire rect{fill:var(--w)}
+  @media (max-width:1180px){ .card{display:none} }
+  /* 낮은 창 — 장식(나침반 · 파형)을 빼서 가운데 여백 확보 */
+  @media (max-height:640px){ .compass{display:none} }
+  @media (max-height:420px){ .lbl,.route{display:none} }
+  @media (max-width:760px){
+    .win{width:94%;height:88%}
+    .wave,.compass,.card,.dt,.hide-s,.out{display:none}
+    .hud{padding:6% 6% 6%}
+  }
+
+  /* ── CAM ───────────────────────── */
+  .cam{background:#000;cursor:crosshair}
+  .cam canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+  .cam.hot{cursor:pointer}
+  .cam::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65)),repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
+  .c-hd{position:absolute;z-index:6;left:12px;right:12px;top:10px;display:flex;justify-content:space-between;align-items:baseline;pointer-events:none}
+  .c-hd b{font:500 13px/1 var(--sa);letter-spacing:.02em}
+  .c-hd .mono{color:var(--w6)}
+  .c-ft{position:absolute;z-index:6;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;pointer-events:none;color:var(--w6)}
+  .c-ft .st{color:var(--w)}
+  .cam.glitch canvas{animation:gl .5s steps(2) 3}
+  .cam.glitch .st{color:var(--r)}
+  @keyframes gl{0%{transform:translate(0)}25%{transform:translate(-6px,2px) skewX(6deg);filter:invert(.12)}50%{transform:translate(4px,-1px)}75%{transform:translate(-2px,0) skewX(-4deg)}}
+  .cam.look::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--r),inset 0 0 50px rgba(255,42,58,.25)}
+  /* 대사 — 블랑은 말풍선, 닥터 밴스는 오른쪽 관찰자 답 */
+  .bub{position:absolute;z-index:8;left:7%;right:7%;bottom:78px;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+  .cam.talk .bub{opacity:1;transform:none}
+  .bub .bh{color:var(--w6);margin-bottom:6px}
+  .cam.look .bub .bh{color:var(--r)}
+  .bub .log{display:flex;flex-direction:column;gap:10px}
+  .bub .ln{max-width:88%;align-self:flex-start;animation:ln-in .25s cubic-bezier(.2,.8,.2,1)}
+  @keyframes ln-in{from{opacity:0;transform:translateY(6px)}}
+  .bub .ln p{background:rgba(0,0,0,.82);border:1px solid var(--w4);color:#fff;padding:8px 12px 9px;font:400 13.5px/1.5 var(--ko);border-radius:2px 12px 12px 12px}
+  .cam.look .bub .ln.b p{border-color:rgba(255,42,58,.7)}
+  .bub .ln.v{align-self:flex-end;text-align:right}
+  .bub .ln.v .who{display:block;font:500 8.5px/1 var(--mo);letter-spacing:.16em;color:var(--g);margin-bottom:5px;text-shadow:0 1px 2px #000}
+  .bub .ln.v + .ln.v .who{display:none}
+  .bub .ln.v p{background:rgba(5,6,5,.86);border-color:rgba(57,255,20,.55);color:var(--w);border-radius:12px 2px 12px 12px}
+  .bub .ln p i{display:inline-block;width:.5em;height:1em;background:#fff;vertical-align:-2px;margin-left:2px;animation:blink .7s steps(1) infinite}
+  .tile:not(.big) .bub{display:none}
+  .cam:not(.big) .bub .ln p{font-size:12.5px}
+
+  @media (max-width:260px){ .c-hd .mono,.c-ft .place{display:none} .c-hd b{font-size:11px} }
+
+
+  /* ── CAMS · 한 위젯에 여러 대 ── */
+  html.w-cams,html.w-cams body{background:transparent}
+  .wall{overflow:visible}
+  .tile{position:absolute;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px var(--w1);
+    transition:left .55s cubic-bezier(.2,.8,.2,1),top .55s cubic-bezier(.2,.8,.2,1),width .55s cubic-bezier(.2,.8,.2,1),height .55s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .2s}
+  .wall:hover .tile:not(:hover){opacity:.5}
+  .tile:hover{box-shadow:0 0 0 1px var(--w4)}
+  .tile.big{box-shadow:0 0 0 1px var(--w6)}
+  .tile.has:not(.big){cursor:zoom-in}
+  .tile:not(.has){cursor:not-allowed}
+  .t-hint,.t-close,.t-deny{position:absolute;z-index:9;font:400 9px/1 var(--mo);letter-spacing:.16em;border-radius:999px;padding:7px 11px;pointer-events:none;opacity:0;transition:opacity .2s}
+  .t-hint{right:12px;bottom:34px;color:var(--w);background:rgba(0,0,0,.6);border:1px solid var(--w4)}
+  .tile.has:not(.big):hover .t-hint{opacity:1}
+  .t-close{all:unset;position:absolute;z-index:9;right:14px;bottom:34px;font:400 9px/1 var(--mo);letter-spacing:.16em;color:var(--w);background:rgba(0,0,0,.6);border:1px solid var(--w4);border-radius:999px;padding:7px 11px;cursor:zoom-out;display:none}
+  .tile.big .t-close{display:block}
+  .t-close:hover{border-color:var(--w)}
+  .t-deny{left:50%;top:50%;transform:translate(-50%,-50%);color:var(--w6);background:rgba(0,0,0,.7);border:1px solid var(--w2)}
+  .tile.deny .t-deny{animation:deny 1.1s ease}
+  @keyframes deny{0%,100%{opacity:0}15%,70%{opacity:1}}
+  @media (max-width:600px){ .tile{border-radius:12px} }
+  /* 폰처럼 칸이 좁을 때 — 시각 · 장소 빼고 글자 줄임 */
+  .tile.tiny .clk,.tile.tiny .place{display:none}
+  .tile.tiny .c-hd{left:8px;right:8px;top:8px}
+  .tile.tiny .c-hd b{font-size:10px}
+  .tile.tiny .c-hd .dot{width:5px;height:5px;margin-right:4px}
+  .tile.tiny .c-ft{left:8px;right:8px;bottom:7px;justify-content:flex-end}
+  .tile.tiny .c-ft .st{font-size:7px;letter-spacing:.08em;white-space:nowrap}
+  .tile.tiny .t-close{right:50%;transform:translateX(50%);bottom:22px;padding:5px 8px;font-size:7.5px}
+  .tile.tiny .t-deny{font-size:7.5px;padding:5px 8px;white-space:nowrap}
+  .tile.tiny .tag small,.tile.tiny .cf{display:none}
+
+  /* ── 패널 프레임 (SIGNAL · VITAL 공통) — 탭 · 깎인 모서리 · 옆 홈 · 계단 밑변 ── */
+  .pn{padding:40px 16px 22px}
+  .frame-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:0}
+  .frame-svg .fr{fill:rgba(238,240,234,.022);stroke:rgba(238,240,234,.32);stroke-width:1;transition:stroke .2s}
+  .frame-svg .nd{fill:#050605;stroke:var(--w6);stroke-width:1}
+  .frame-svg .sq{fill:var(--w6)}
+  .red .frame-svg .fr{stroke:rgba(255,42,58,.6)}
+  .tab{position:absolute;z-index:2;left:14px;top:0;height:22px;display:flex;align-items:center;gap:0;color:var(--w);white-space:nowrap}
+  .tab .m{color:var(--w6);margin-left:6px}
+  .pn > :not(.frame-svg):not(.tab){position:relative;z-index:1}
+
+  /* ── SIGNAL · AEGIS 해상기지 ───────────────────────── */
+  .sig{display:flex;flex-direction:column}
+  .map{position:relative;flex:1;min-height:0;margin:0 -10px}
+  .map-t{position:absolute;left:10px;top:0;z-index:2;pointer-events:none}
+  .map-t b{display:block;font:600 20px/1 var(--sa);letter-spacing:.08em}
+  .map-t span{display:block;margin-top:5px;color:var(--w6)}
+  .map-t span i{font-style:normal;color:var(--w)}
+  .iso{position:absolute;left:0;right:0;top:58px;bottom:0;width:100%;height:calc(100% - 58px);overflow:visible}
+  .iso *{vector-effect:non-scaling-stroke}
+  .iso .wl{stroke:rgba(150,210,220,.09);stroke-width:1}
+  .iso .wv{fill:none;stroke:rgba(150,210,220,.28);stroke-width:1}
+  .iso .f-t{fill:#151815;stroke:var(--w6);stroke-width:1}
+  .iso .f-r{fill:#0d0f0d;stroke:var(--w4);stroke-width:1}
+  .iso .f-l{fill:#080908;stroke:var(--w4);stroke-width:1}
+  .iso .sub .f-t,.iso .sub .f-r,.iso .sub .f-l{fill:none;stroke:var(--w4);stroke-dasharray:3 3}
+  .iso .ln{stroke:var(--w4);stroke-width:1;fill:none}
+  .iso .dl{stroke:rgba(238,240,234,.22);stroke-width:1;fill:none}
+  .iso .wn{stroke:rgba(238,240,234,.42);stroke-width:1;stroke-dasharray:2 1.6;fill:none}
+  .iso .gd{stroke:rgba(238,240,234,.26);stroke-width:1;fill:none}
+  .iso .br{stroke:rgba(238,240,234,.2);stroke-width:1;fill:none}
+  .iso .rl{stroke:rgba(238,240,234,.5);stroke-width:1;stroke-dasharray:1 2.2;fill:none}
+  .iso .pp{stroke:rgba(238,240,234,.34);stroke-width:1;fill:none}
+  .iso .sbl{stroke:var(--w2);stroke-width:1;stroke-dasharray:3 3;fill:none}
+  .iso .spine .f-t{fill:rgba(238,240,234,.04)}
+  .iso text.cl{fill:var(--w)}
+  .iso text.ct{fill:var(--w6);paint-order:stroke;stroke:#050605;stroke-width:3px;stroke-linejoin:round}
+  .iso .hot .f-t,.iso .hot .f-r,.iso .hot .f-l{stroke:var(--y)}
+  .iso .hot .f-t{fill:rgba(255,210,31,.12)}
+  .red .iso .hot .f-t,.red .iso .hot .f-r,.red .iso .hot .f-l{stroke:var(--r)}
+  .red .iso .hot .f-t{fill:rgba(255,42,58,.18)}
+  .iso text{font-family:var(--mo);font-size:var(--fs,6.4px);letter-spacing:.06em;fill:var(--w6)}
+  .iso text.h{font-family:var(--sa);font-weight:600;font-size:calc(var(--fs,6.4px) * 1.4);fill:var(--w6)}
+  .iso text.big{font-family:var(--sa);font-weight:600;font-size:calc(var(--fs,6.4px) * 1.33);letter-spacing:.02em;fill:var(--w)}
+  .iso .co{stroke:var(--w4);stroke-width:1;fill:none}
+  .iso .cn{fill:#050605;stroke:var(--w6);stroke-width:1}
+  .iso .cam{fill:#050605;stroke:var(--w);stroke-width:1}
+  /* 켜진 캠 = 속 빈 고리 + 가운데 점 (속이 찬 노란 점은 BLANC 위치 하나뿐) */
+  .iso .cam.on{fill:#050605;stroke:var(--y);stroke-width:1.6}
+  .red .iso .cam.on{stroke:var(--r)}
+  .iso text.cl.on{fill:var(--y)} .red .iso text.cl.on{fill:var(--r)}
+  .iso .you{fill:var(--g)}
+  .iso .route{fill:none;stroke:var(--g);stroke-width:1.2;stroke-dasharray:3 3;animation:dash 1s linear infinite}
+  .red .iso .route{stroke:var(--r)}
+  @keyframes dash{to{stroke-dashoffset:-12}}
+  .iso .subj{fill:var(--y)} .red .iso .subj{fill:var(--r)}
+  .iso .ping{fill:none;stroke:var(--y);stroke-width:1;transform-box:fill-box;transform-origin:center;animation:ping 1.8s ease-out infinite}
+  .red .iso .ping{stroke:var(--r);animation-duration:.9s}
+  @keyframes ping{from{transform:scale(1);opacity:.9}to{transform:scale(5);opacity:0}}
+  .s-ft{display:flex;align-items:center;margin-top:8px}
+  /* 신호등 — 가로 캡슐, 배지까지 연결선 */
+  .capsule{flex:none;display:flex;align-items:center;padding:6px;border:1px solid var(--w4);border-radius:999px;background:rgba(238,240,234,.03);position:relative}
+  .red .capsule{border-color:rgba(255,42,58,.6)}
+  .lights{display:flex;gap:10px;padding:8px 10px;border-radius:999px;border:1px solid var(--w2);background:rgba(0,0,0,.25)}
+  .lights .lt{width:20px;height:20px}
+  .s-ln{flex:1;position:relative;height:1px;background:var(--w4);margin:0 0 0 0}
+  .s-ln::before,.s-ln::after{content:"";position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;border:1px solid var(--w6);background:var(--bg)}
+  .s-ln::before{left:-4px} .s-ln::after{left:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:0;background:var(--w6);border:0}
+  .red .s-ln{background:rgba(255,42,58,.6)} .red .s-ln::before{border-color:var(--r)} .red .s-ln::after{background:var(--r)}
+  .lt{width:11px;height:11px;border-radius:50%;border:1px solid var(--w4);transition:background .2s,box-shadow .2s,border-color .2s;--lc:var(--g)}
+  .lt.Y{--lc:var(--y)} .lt.R{--lc:var(--r)}
+  .lt.on{background:var(--lc);border-color:var(--lc);box-shadow:0 0 8px var(--lc),0 0 20px color-mix(in srgb,var(--lc) 45%,transparent)}
+  .red .lt.R.on{animation:blink .55s steps(1) infinite}
+  .state{font:500 26px/1 var(--sa);letter-spacing:-.02em;color:var(--w);transition:color .2s}
+  .red .state{color:var(--r)}
+  .sub{margin-top:5px;color:var(--w6)}
+  .badge{position:relative;flex:none;width:74px;height:74px}
+  .badge svg{width:100%;height:100%;animation:spin 18s linear infinite}
+  .badge text{font:500 7.4px var(--mo);letter-spacing:.2em;fill:var(--w6)}
+  .badge circle{fill:none;stroke:var(--w2)}
+  .badge i{position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:1px solid var(--w);border-radius:50%;
+    background:linear-gradient(var(--w),var(--w)) 50% 0/1px 100% no-repeat,linear-gradient(var(--w),var(--w)) 0 50%/100% 1px no-repeat,radial-gradient(ellipse 45% 100%,transparent 92%,var(--w) 93% 100%,transparent) center/100% 100% no-repeat}
+  .red .badge i{border-color:var(--r)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .plate{margin-top:10px;display:flex;align-items:center;gap:8px;color:var(--w6)}
+  .plate .ic{flex:none;width:12px;height:12px;background:var(--w6);-webkit-mask:url(img/warn.png) center/contain no-repeat;mask:url(img/warn.png) center/contain no-repeat}
+  .plate .hz{flex:none;width:46px;height:9px;margin-left:auto;background:repeating-linear-gradient(-45deg,var(--w6) 0 4px,transparent 4px 8px)}
+  .red .plate{color:var(--r)} .red .plate .ic{background:var(--r)} .red .plate .hz{background:repeating-linear-gradient(-45deg,var(--r) 0 4px,transparent 4px 8px)}
+  .plate small{display:none}
+  .plate b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ── VITAL ───────────────────────── */
+  .gr{display:flex;flex-direction:column}
+  .g-body{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:center}
+  .gauge{position:relative;width:132px;height:132px}
+  .gauge svg{width:100%;height:100%;overflow:visible}
+  .gauge .tk{stroke:var(--w4);stroke-width:1}
+  .gauge .tk.l{stroke:var(--w)}
+  .gauge .bg{fill:none;stroke:var(--w1);stroke-width:5}
+  .gauge .arc{fill:none;stroke:var(--g);stroke-width:5;stroke-linecap:butt;transform:rotate(-90deg);transform-origin:60px 60px;transition:stroke-dasharray .3s,stroke .2s}
+  .red .gauge .arc{stroke:var(--r)}
+  .gauge .rot{fill:none;stroke:var(--w4);stroke-dasharray:2 5;transform-origin:60px 60px;animation:spin 9s linear infinite}
+  .g-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .g-num b{font:500 36px/1 var(--sa);letter-spacing:-.03em;color:var(--w)}
+  .red .g-num b{color:var(--r)}
+  .g-num small{margin-top:3px;color:var(--w6)}
+  .g-side dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin-bottom:12px}
+  .g-side dt{color:var(--w4)} .g-side dd{color:var(--w);text-align:right}
+  .red .g-side dd.st{color:var(--r)}
+  .cells{display:flex;align-items:center;gap:3px;padding:4px;border:1px solid var(--w4);border-radius:4px;position:relative;margin-right:6px}
+  .cells::after{content:"";position:absolute;right:-6px;top:50%;width:4px;height:10px;margin-top:-5px;background:var(--w4);border-radius:0 2px 2px 0}
+  .cells i{flex:1;height:16px;border-radius:1px;background:var(--g);opacity:.9}
+  .cells i.off{background:var(--w1)}
+  .cells i.half{background:linear-gradient(90deg,var(--g) 0 90%,var(--w1) 90%)}
+  .cell-l{display:flex;justify-content:space-between;margin-top:5px;color:var(--w4)}
+  .plot{position:relative;flex:1;min-height:70px;margin-top:14px;
+    clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));background:var(--w2)}
+  .plot::before{content:"";position:absolute;inset:1px;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+    background:linear-gradient(var(--w1) 1px,transparent 1px) 0 0/100% 25%,#060706}
+  .plot canvas{position:absolute;inset:1px;width:calc(100% - 2px);height:calc(100% - 2px)}
+  .xh{position:absolute;top:0;bottom:0;width:1px;background:var(--w6);opacity:0;pointer-events:none}
+  .xh span{position:absolute;top:6px;left:6px;white-space:nowrap;color:var(--w)}
+  .plot:hover .xh{opacity:1}
+  .g-ft{display:flex;align-items:center;gap:14px;margin-top:10px;color:var(--w4)}
+  .xhs{display:flex;gap:6px}
+  .xhs i{width:16px;height:16px;border:1px solid var(--w6);border-radius:50%;background:linear-gradient(var(--w6),var(--w6)) 50% 0/1px 100% no-repeat,linear-gradient(var(--w6),var(--w6)) 0 50%/100% 1px no-repeat}
+  .xhs i:first-child{border-color:var(--g)}
+  .g-ft .tl{margin-left:auto;display:flex;gap:18px}
+  html.w-signal,html.w-signal body,html.w-graph,html.w-graph body{background:transparent}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<script>
+/* ===== 공통 ===== */
+const Q = new URLSearchParams(location.search);
+const W = Q.get('w') || 'cam', N = +Q.get('n') || 3;
+const CH = 'BroadcastChannel' in window ? new BroadcastChannel('limbic-a') : null;
+const send = m => { try{ CH && CH.postMessage(m); }catch(e){} };
+const on = fn => CH && CH.addEventListener('message', e => fn(e.data || {}));
+const KEY = 'limbicA';
+/* 페이지를 열 때마다 새로 뽑음 — 같은 순간(8초 안)에 뜬 iframe 끼리는 같은 값을 공유 */
+function pick(){
+  let s = {}; try{ s = JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){}
+  const now = Date.now();
+  if (s.pick >= 1 && s.pick <= N && now - s.t < 3000) return s.pick;   // 같은 접속에서 동시에 뜬 위젯끼리만 공유
+  /* 캠별 등장 비율 — CAM 1 · 2 를 조금 더 자주 (40 : 40 : 20) */
+  const WT = { 1:4, 2:4, 3:2 }, ws = Array.from({ length:N }, (_, i) => WT[i+1] || 2), sum = ws.reduce((a,b) => a + b, 0);
+  let r = Math.random() * sum, p = 1;
+  for (let i = 0; i < N; i++){ r -= ws[i]; if (r < 0){ p = i + 1; break; } }
+  try{ localStorage.setItem(KEY, JSON.stringify({ pick:p, t:now })); }catch(e){}
+  return p;
+}
+const pad = (n, k = 2) => String(n).padStart(k, '0');
+const clock = (s = true) => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}` + (s ? `:${pad(d.getSeconds())}` : ''); };
+const AWARE_MS = 6500;
+const SINCE = new Date(2026, 1, 12);
+const dplus = () => 'D+' + Math.floor((Date.now() - SINCE) / 864e5);
+</script>
+
+<!-- ================= MAIN ================= -->
+<template id="t-main">
+<div class="w mon" id="mon">
+  <div class="out mono" style="left:2.2%;top:max(6%,64px)"><span class="dot r"></span>REC · CAM 00</div>
+  <div class="out mono" style="left:2.2%;bottom:5%;writing-mode:vertical-rl;transform:rotate(180deg)">HARMONY DIV. — OBSERVATION UNIT</div>
+  <div class="card"><div><span>Nº</span><b>001</b></div><div><span>OCT</span><span>2026 ©</span></div><div><span>LIMBIC SYSTEM</span></div><i class="bc" style="display:block"></i></div>
+  <div class="win" id="win" data-top="30">
+    <div class="feed"><img id="img" src="img/main.jpg?v=2" alt=""></div>
+    <div class="hud">
+      <div class="h-top">
+        <div class="compass mono fx"><span style="color:var(--w6)">37° 33′ 12″ N</span><div class="k"></div><div class="l"><span>W</span><span>NW</span><span>N</span><span>NE</span><span>E</span></div></div>
+        <div class="h-row"><span class="big" id="clk">--:--</span><span class="mono hide-s subj" style="text-align:right"><span class="fx" style="display:block;color:var(--w6)">IN FRAME</span><b>Dr. Vance &amp; Blanc</b></span></div>
+        <div class="rule fx"></div>
+        <div class="h-row mono fx lbl"><span>LOCAL TIME</span><span class="hide-s">126° 58′ 40″ E</span></div>
+        <div class="wave fx"><canvas id="wv"></canvas></div>
+      </div>
+      <div class="mid"></div>
+      <div class="h-bot">
+        <div class="nmw"><div class="name" id="nm2">LIMBIC-SYSTEM<em id="tg2">SCANNING</em></div><div class="route mono fx" id="rt">HM-0001 → —</div></div>
+        <div class="rule fx"></div>
+        <span class="big dd" id="dd">D+0</span>
+        <dl class="dt mono"><dt>SINCE</dt><dd>2026.02.12</dd><dt>MATCH</dt><dd class="on">98.9 %</dd><dt>STATUS</dt><dd>ON DUTY</dd><dt>SIGNAL</dt><dd id="sg">STABLE</dd></dl>
+      </div>
+      <div class="alert mono"><span class="dot r"></span><span id="alt">ALERT</span></div>
+    </div>
+    <div class="tgt" id="tgt"><div class="tag"><b id="nm"></b></div><div class="meta"><small id="sb"></small><span class="cf" id="cf"></span></div></div>
+    <svg class="wire" id="wire"></svg>
+    <div class="pop mono" id="pop">
+      <div class="gl gl-tint"><span>SUBJECT FILE · ARCH</span></div>
+      <div class="gl gl-main" id="glm"></div>
+      <svg class="gl-edge" id="gle"></svg>
+      <div class="pc">
+        <div class="g-hd"><span>PERSONNEL FILE</span><button class="px" id="px" aria-label="닫기">✕</button></div>
+        <div class="pf" id="pf"></div>
+        <div class="pb"><h3 id="pn"></h3><p class="kr" id="pk"></p><dl id="pd"></dl></div>
+        <div class="haz"></div>
+      </div>
+      <div class="gl gl-badge"><svg viewBox="0 0 92 92"><defs><path id="bp" d="M46 46 m-36 0 a36 36 0 1 1 72 0 a36 36 0 1 1 -72 0"/></defs><text><textPath href="#bp">CLASSIFIED · PERSONNEL · AEGIS ·</textPath></text></svg><button class="bx" id="bx" aria-label="닫기">✕</button><b></b></div>
+      <div class="gl gl-pill"><i></i></div>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- ================= CAM ================= -->
+<template id="t-cam">
+<div class="w cam" id="cam"></div>
+</template>
+
+<template id="t-cams">
+<div class="w wall" id="wall"></div>
+</template>
+
+<!-- ================= SIGNAL ================= -->
+<template id="t-signal">
+<div class="w sig pn" id="sig">
+  <svg class="frame-svg" id="fr"></svg>
+  <div class="tab mono"><span class="dot"></span>SIGNAL<span class="m">· AEGIS</span></div>
+  <div class="map"><div class="map-t"><b>AEGIS</b><span class="mono">OFFSHORE OBSERVATION BASE<br>LOC · <i id="loc">—</i></span></div><svg class="iso" id="iso" preserveAspectRatio="xMidYMid meet"></svg></div>
+  <div class="s-ft">
+    <div class="capsule"><div class="lights"><i class="lt R"></i><i class="lt Y"></i><i class="lt G"></i></div>
+      <div hidden><div class="state" id="sb">Clear</div><div class="sub mono" id="ss">NO SUBJECT IN RANGE</div></div></div>
+    <i class="s-ln"></i>
+    <div class="badge"><svg viewBox="0 0 80 80"><defs><path id="cp" d="M40 40 m-31 0 a31 31 0 1 1 62 0 a31 31 0 1 1 -62 0"/></defs><circle cx="40" cy="40" r="38"/><text><textPath href="#cp">AEGIS · OBSERVATION · SECTOR B ·</textPath></text></svg><i></i></div>
+  </div>
+  <div class="plate mono"><i class="ic"></i><b id="p1" style="font-weight:400">OBSERVATION IN PROGRESS</b><small id="p2">관찰 중 · 관계자 외 출입 금지</small><i class="hz"></i></div>
+</div>
+</template>
+
+<!-- ================= GRAPH ================= -->
+<template id="t-graph">
+<div class="w gr pn" id="gr">
+  <svg class="frame-svg" id="fr"></svg>
+  <div class="tab mono"><span class="dot" id="gdot"></span>VITAL<span class="m">· <span id="who">BLANC</span></span></div>
+  <div class="g-body">
+    <div class="gauge"><svg viewBox="0 0 120 120" id="gg"></svg><div class="g-num"><b id="bpm">72</b><small class="mono">BPM</small></div></div>
+    <div class="g-side">
+      <dl class="mono"><dt>STATE</dt><dd class="st" id="chip">STABLE</dd><dt>SIGNAL</dt><dd id="sgv">34.7 dB</dd><dt>RANGE</dt><dd>60–90</dd></dl>
+      <div class="cells" id="cells"></div>
+      <div class="cell-l mono"><span>SYNC</span><span style="color:var(--w)">98.9 %</span></div>
+    </div>
+  </div>
+  <div class="plot" id="plot"><canvas id="cv"></canvas><div class="xh mono" id="xh"><span></span></div></div>
+  <div class="g-ft mono"><span class="xhs"><i></i><i></i><i></i></span><span class="tl"><span>-14s</span><span>-7s</span><span>NOW</span></span></div>
+</div>
+</template>
+
+<script>
+document.body.appendChild(document.getElementById('t-' + W).content.cloneNode(true));
+document.documentElement.className = 'w-' + W;
+const $ = s => document.querySelector(s);
+const tick = () => { const s = clock(W !== 'main'); document.querySelectorAll('#clk,.clk').forEach(c => c.textContent = s); };
+setInterval(tick, 500); tick();
+
+/* 이미지 object-fit:cover 좌표 변환 — 이미지 % → 화면 px */
+function coverMap(iw, ih, W, H, px = .5, py = .5){
+  const s = Math.max(W / iw, H / ih), dw = iw * s, dh = ih * s;
+  const ox = (W - dw) * px, oy = (H - dh) * py;
+  return { s, ox, oy, dw, dh, x: v => ox + v / 100 * dw, y: v => oy + v / 100 * dh };
+}
+
+/* ===== 탐색 박스 =====
+   마우스를 바짝 따라다니는 작은 탐색 박스 → 인물 영역에 가까워질수록 그 인물 박스 쪽으로 끌려가 크기·위치가 맞춰지고,
+   충분히 가까우면 고정(lock). subjects() = [{rect:[l,t,r,b] px, name, sub}] */
+function Tracker(root, T, subjects, onLock){
+  const s = { mx:-1, my:-1, x:0, y:0, w:0, h:0, init:false, lock:null, hold:null, k:0 };
+  const nm = T.querySelector('.nm,#nm'), sb = T.querySelector('.sb,#sb'), cf = T.querySelector('.cf');
+  const setPt = e => { const r = root.getBoundingClientRect(); s.mx = e.clientX - r.left; s.my = e.clientY - r.top; };
+  root.addEventListener('pointermove', setPt);
+  root.addEventListener('pointerdown', setPt);
+  root.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') s.mx = s.my = -1; });
+  const ss = v => v * v * (3 - 2 * v);
+  function frame(){
+    requestAnimationFrame(frame);
+    const Wd = root.clientWidth, Ht = root.clientHeight, S = Math.min(Wd, Ht);
+    let tg, best = null, bk = 0;
+    if (s.hold){ tg = s.hold.rect; best = s.hold; bk = 1; }
+    else if (s.mx < 0){
+      T.classList.remove('on'); s.init = false;
+      if (s.lock){ s.lock = null; onLock && onLock(null); }
+      return;
+    } else {
+      const cs = Math.max(36, S * .13);
+      const cur = [s.mx - cs/2, s.my - cs/2, s.mx + cs/2, s.my + cs/2];
+      for (const p of subjects()){
+        const [l,t,r,b] = p.rect;
+        const dx = Math.max(l - s.mx, 0, s.mx - r), dy = Math.max(t - s.my, 0, s.my - b);
+        const k = (!dx && !dy) ? 1 : ss(Math.max(0, 1 - Math.hypot(dx, dy) / (S * .22)));
+        if (k > bk){ bk = k; best = p; }
+      }
+      const e = bk ? Math.pow(bk, 1.6) : 0;
+      tg = best ? cur.map((v, i) => v + (best.rect[i] - v) * e) : cur;
+    }
+    if (!s.init){ s.x = tg[0]; s.y = tg[1]; s.w = tg[2]-tg[0]; s.h = tg[3]-tg[1]; s.init = true; }
+    const ease = bk > .9 ? .2 : .42;
+    s.x += (tg[0] - s.x) * ease; s.y += (tg[1] - s.y) * ease;
+    s.w += ((tg[2]-tg[0]) - s.w) * ease; s.h += ((tg[3]-tg[1]) - s.h) * ease;
+    const q = v => Math.round(v / 2) * 2;  // 2px 격자로 끊어서 기계적으로
+    const jit = bk < .5 ? (Math.random() - .5) * 2 : 0;
+    const top = +root.dataset.top || 4, y0 = Math.max(top, s.y), x0 = Math.max(4, s.x);
+    Object.assign(T.style, { left:q(x0 + jit)+'px', top:q(y0)+'px', width:q(Math.min(s.w, Wd - x0 - 4))+'px', height:q(Math.min(s.h - (y0 - s.y), Ht - y0 - 4))+'px' });
+    T.classList.add('on');
+    const bh = Math.min(s.h - (y0 - s.y), Ht - y0 - 4);
+    T.classList.toggle('in', y0 < 26);                 // 위에 이름표 자리 없음 → 아래로
+    T.classList.toggle('bt', y0 + bh + 34 > Ht);       // 아래에 보조 글자 자리 없음 → 위로
+    s.k = bk;
+    const locked = bk > .88 ? best : null;
+    T.classList.toggle('lock', !!locked);
+    if (locked !== s.lock){ s.lock = locked; onLock && onLock(locked); }
+    if (locked){ nm.textContent = locked.name; sb.textContent = locked.sub; cf.textContent = 'CONF ' + (96 + bk * 3.9).toFixed(1) + '%'; }
+    else {
+      nm.textContent = best && bk > .15 ? 'ACQUIRING ' + Math.round(bk * 100) + '%' : 'SCANNING';
+      sb.textContent = ''; cf.textContent = `X${pad(Math.round(s.mx), 4)} Y${pad(Math.round(s.my), 4)}`;
+    }
+  }
+  requestAnimationFrame(frame);
+  if (Q.get('mx')) setTimeout(() => { s.mx = +Q.get('mx') / 100 * root.clientWidth; s.my = +Q.get('my') / 100 * root.clientHeight; }, 300);
+  return s;
+}
+
+/* ================= MAIN ================= */
+if (W === 'main') {
+  const PEOPLE = [
+    { name:'Dr. Vance', no:'001', id:'ID HM-0001', tag:'OBSERVER', route:'HM-0001 · HEAD OF HARMONY DIV.', kr:'Head of Harmony', box:[27,3,51,45], photo:'img/vance-profile.jpg', pos:'50% 18%', bs:'cover',
+      rows:{ NAME:'Jeong-won, Byeon', CLASS:'GUIDE · S', ELEMENT:'VERDE', PARTNER:'Blanc' } },
+    { name:'Blanc', no:'002', id:'SUBJECT · VG-4', tag:'SUBJECT', route:'VANGUARD 4 · UNDER OBSERVATION', kr:'Vanguard, Team 4', box:[56,16,83,56], photo:'img/blanc-profile.jpg', pos:'50% 14%', bs:'cover',
+      rows:{ NAME:'Yeon-su, Kim', CLASS:'SENTINEL · S', ELEMENT:'GLACIES', PARTNER:'Dr. Vance' } },
+  ];
+  const mon = $('#mon'), win = $('#win'), img = $('#img'), T = $('#tgt'), pop = $('#pop');
+  $('#dd').textContent = dplus();
+  let map = null;
+  const fit = () => { if (img.naturalWidth) map = coverMap(img.naturalWidth, img.naturalHeight, win.clientWidth, win.clientHeight, .5, .22); };
+  img.onload = fit; addEventListener('resize', () => { fit(); wfit(); }); fit();
+  const rectOf = p => { const [l,t,r,b] = p.box; return [map.x(l), map.y(t), map.x(r), map.y(b)]; };
+  const nameSet = p => {
+    $('#nm2').firstChild.textContent = p ? p.name : 'LIMBIC-SYSTEM';
+    $('#tg2').textContent = p ? p.tag : 'SCANNING';
+    $('#rt').textContent = p ? p.route : 'HM-0001 → —';
+  };
+  const tr = Tracker(win, T, () => (map && !pop.classList.contains('on')) ? PEOPLE.map(p => Object.assign(p, { rect:rectOf(p), sub:p.tag })) : [], p => {
+    if (!pop.classList.contains('on')) nameSet(p);
+    T.classList.toggle('red', !!p && p.name === 'Blanc' && mon.classList.contains('aw'));
+    if (p) send({ t:'focus', who:p.name.toUpperCase() });
+  });
+  win.addEventListener('pointerenter', () => mon.classList.add('live'));
+  win.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pop.classList.contains('on')) mon.classList.remove('live'); });
+  if (matchMedia('(hover:none)').matches) mon.classList.add('live');
+  function wire(p){
+    const svg = $('#wire'), [l,t0,r,b] = rectOf(p), W0 = win.clientWidth;
+    const s = +getComputedStyle(pop).getPropertyValue('--s') || 1;
+    const pl = pop.offsetLeft, pw = pop.offsetWidth * s, pt = pop.offsetTop - pop.offsetHeight * s / 2;
+    const right = pl > (l + r) / 2;
+    const bx = right ? r : l, by = Math.max(t0 + 24, Math.min(b - 24, t0 + (b - t0) * .3));
+    const px = right ? pl : pl + pw, py = pt + (right ? 64 : 150) * s;
+    const mx = (bx + px) / 2;
+    svg.setAttribute('viewBox', `0 0 ${W0} ${win.clientHeight}`);
+    svg.innerHTML = `<path d="M${bx} ${by} H${mx} V${py} H${px}"/><circle cx="${bx}" cy="${by}" r="3.5"/><rect x="${mx-2}" y="${py-2}" width="4" height="4"/><circle cx="${px}" cy="${py}" r="3.5"/>`;
+    svg.classList.add('on');
+  }
+  /* 본체 실루엣: 왼쪽 위 탭, 오른쪽 위 원형 홈(배지 자리), 오른쪽 옆 홈, 아래 계단, 왼쪽 아래 둥근 모서리 */
+  (function shape(){
+    const w = 320, h = 350, d = `M0 40 L0 14 Q0 0 14 0 L168 0 L192 26 L240.2 26 A52 52 0 0 0 320 73.8 L320 196 L310 206 L310 248 L320 258 L320 330 Q320 350 300 350 L190 350 L178 338 L22 338 Q0 338 0 316 Z`;
+    /* clip-path 는 뒤 블러(backdrop-filter)를 못 자르므로 mask 로 자름 → 테두리 바깥은 완전히 빔 */
+    const m = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><path d='${d}'/></svg>`)}") 0 0/100% 100% no-repeat`;
+    $('#glm').style.webkitMask = m; $('#glm').style.mask = m;
+    $('#gle').setAttribute('viewBox', `0 0 ${w} ${h}`); $('#gle').innerHTML = `<path d="${d}"/>`;
+  })();
+  function openPop(p){
+    $('#pf').style.backgroundImage = `url(${p.photo})`; $('#pf').style.backgroundPosition = p.pos; $('#pf').style.backgroundSize = p.bs || 'cover';
+    $('#pn').textContent = p.name; $('#pk').textContent = p.kr;
+    
+    $('#pd').innerHTML = Object.entries(p.rows).map(([k,v]) => `<dt>${k}</dt><dd${k === 'MATCH' ? ' class="gg"' : ''}>${v}</dd>`).join('');
+    const [l,,r] = rectOf(p), WW = win.clientWidth, HH = win.clientHeight, narrow = WW < 600;
+    const s = Math.min(1, (HH - 90) / 400, (WW - 40) / 400);
+    pop.style.setProperty('--s', s.toFixed(3));
+    const pw = 320 * s, padL = 40 * s, padR = 36 * s;
+    let x = (l + r) / 2 > WW / 2 ? l - pw - 64 : r + 64;
+    if (narrow) x = (WW - pw) / 2;
+    pop.style.left = Math.max(padL, Math.min(WW - pw - padR, x)) + 'px';
+    tr.hold = p; nameSet(p); pop.classList.add('on'); send({ t:'id', who:p.name.toUpperCase() });
+    if (win.clientWidth >= 600) requestAnimationFrame(() => wire(p)); else $('#wire').classList.remove('on');
+  }
+  const closePop = () => { pop.classList.remove('on'); $('#wire').classList.remove('on'); tr.hold = null; };
+  win.addEventListener('click', e => {
+    if (e.target.closest('.pop')) return;
+    if (pop.classList.contains('on')){ closePop(); return; }
+    if (tr.lock) openPop(tr.lock);
+  });
+  $('#px').onclick = $('#bx').onclick = e => { e.stopPropagation(); closePop(); };
+  let at;
+  on(m => {
+    if (m.t === 'aware'){ mon.classList.add('aw'); $('#alt').textContent = `SUBJECT AWARE · CAM-${pad(m.cam)}`; $('#sg').textContent = 'ALERT'; clearTimeout(at); at = setTimeout(() => { mon.classList.remove('aw'); $('#sg').textContent = 'STABLE'; }, AWARE_MS + 200); }
+    if (m.t === 'calm'){ mon.classList.remove('aw'); $('#sg').textContent = 'STABLE'; }
+  });
+  /* 고도 그래프 같은 가는 파형 */
+  const wv = $('#wv'), wg = wv.getContext('2d'); let ph = 0;
+  function wfit(){ const d = Math.min(2, devicePixelRatio || 1); wv.width = wv.clientWidth * d; wv.height = wv.clientHeight * d; }
+  wfit();
+  (function wave(){
+    requestAnimationFrame(wave); ph += .012;
+    const w = wv.width, h = wv.height, n = 150; wg.clearRect(0,0,w,h);
+    wg.fillStyle = 'rgba(238,240,234,.55)';
+    for (let i = 0; i < n; i++){
+      const x = i / (n-1) * w, a = .25 + .2*Math.sin(i*.08 + ph*3) + .15*Math.sin(i*.21 - ph*2) + .1*Math.sin(i*.5 + ph);
+      const bh = Math.max(1, a * h); wg.fillRect(x, (h - bh)/2, Math.max(1, w/600), bh);
+    }
+  })();
+  if (Q.get('who')) setTimeout(() => { mon.classList.add('live'); const p = PEOPLE.find(x => x.name.toLowerCase().includes(Q.get('who'))); p.rect = rectOf(p); if (Q.get('pop')) openPop(p); else { tr.hold = p; nameSet(p); } }, 500);
+  if (Q.get('mx')) mon.classList.add('live');
+  if (Q.get('aware')) setTimeout(() => { mon.classList.add('aw'); $('#alt').textContent = 'SUBJECT AWARE · CAM-01'; }, 300);
+}
+
+/* ================= CAM ================= */
+const PLACES = { 1:'BLANC ROOM', 2:'CORRIDOR B-2', 3:'TRAINING ROOM' };
+/* 캠별 이미지 풀 — 접속할 때마다 하나를 뽑음.
+   a = 평소, b = 클릭 후(없으면 클릭해도 대사 없음), e = 같은 장면의 빈 공간(인물이 없는 캠에 뜸 — 8 은 짝이 없어 7 의 빈 공간 사용). box = 얼굴(머리) 영역(이미지 %) [좌,위,우,아래] — 감지 박스 · 화면 가운데 맞춤 기준
+   대사: 'B' = 블랑(말풍선), 'V' = 닥터 밴스(관찰자 답) */
+const POOL = { 1:['1','2'], 2:['3','4','6'], 3:['7','8'] };
+const SHOTS = {
+  '1':{ a:'img/cam/1-1.jpg', e:'img/cam/e1.jpg', b:'img/cam/1-2.jpg', box:[54,16,69,37],
+        pre:[['B','......']],
+        post:[['B','잠깐, 정원 씨 또 CCTV 보고 있죠?'],['B','저 방금 훈련 끝나서 게임하는 거예요.'],['B','잔소리 금지.'],['V','...알고 있습니다.'],['V','아무 말도 안 했습니다만.']] },
+  '2':{ a:'img/cam/2-1.jpg', e:'img/cam/e2.jpg', b:'img/cam/2-2.jpg', box:[19,29,36,46],
+        pre:[['B','아싸. 좋은 무기 나왔다.']],
+        post:[['B','정원 씨, 언제 와요?']] },
+  '3':{ a:'img/cam/3.jpg', e:'img/cam/e3.jpg', box:[48,25,59,39] },
+  '4':{ a:'img/cam/4.jpg', e:'img/cam/e4.jpg', box:[54,15,70,36] },
+  '6':{ a:'img/cam/6-1.jpg', e:'img/cam/e6.jpg', b:'img/cam/6-2.jpg', box:[39,12,58,33],
+        pre:[['B','......']],
+        post:[['B','혹시 지금 복도에 있는 CCTV 보고 있어요?'],['B','빨간 불 들어오길래.'],['V','......제가 보는 줄 어떻게 알았습니까.'],['B','에이, 척하면 척이죠.']] },
+  '7':{ a:'img/cam/7.jpg', e:'img/cam/e7.jpg', box:[56,29,68,41] },
+  '8':{ a:'img/cam/8.jpg', e:'img/cam/e7.jpg', box:[69,37,77,49] },
+};
+const pickShot = n => { const p = POOL[n] || POOL[1], f = Q.get('shot' + n); return SHOTS[f && p.includes(f) ? f : p[Math.floor(Math.random() * p.length)]]; };
+
+const CAM_HTML = `<canvas></canvas>
+  <div class="tgt"><div class="tag"><b class="nm"></b></div><div class="meta"><small class="sb"></small><span class="cf"></span></div></div>
+  <div class="bub"><div class="bh mono">● audio intercept</div><div class="log"></div></div>
+  <div class="c-hd"><b><span class="dot r"></span>CAM-<span class="cn">00</span></b><span class="mono clk">--:--:--</span></div>
+  <div class="c-ft mono"><span class="place">—</span><span class="st">NO MOTION</span></div>`;
+
+/* 캠 한 대 — root 안에 그림. opt.canLook() 이 false 면 클릭해도 반응 없음(작은 타일일 때), opt.big() 이면 평소 대사 표시 */
+function Cam(root, camN, shot, opt = {}){
+  root.innerHTML = CAM_HTML; root.dataset.top = 50;
+  const q = s => root.querySelector(s);
+  const has = !opt.empty, talk = !!(has && shot.b);
+  const cv = q('canvas'), ctx = cv.getContext('2d'), T = q('.tgt');
+  const sm = document.createElement('canvas'), sx = sm.getContext('2d', { willReadFrequently:true });
+  q('.cn').textContent = pad(camN); q('.place').textContent = PLACES[camN] || 'ZONE ' + camN;
+  const imgs = {};
+  const srcs = has ? { a:shot.a, b:shot.b } : { a:shot.e };
+  for (const k in srcs) if (srcs[k]){ const i = new Image(); i.src = srcs[k]; imgs[k] = i; i.onload = () => fit(); }
+  let look = false, block = 14, map = null;
+  const idleSt = () => has ? 'MOTION · 1 SUBJECT' : 'NO MOTION';
+  q('.st').textContent = idleSt();
+  const cur = () => imgs[look && imgs.b ? 'b' : 'a'];
+
+  /* 인물이 화면 가운데 오도록 — 보이는 비율에 맞춰 잘라낼 위치 계산 */
+  /* 이미지 아래 5% 는 잘라 씀 (생성 이미지 워터마크 자리) */
+  const CROP = .95, ih = im => im.naturalHeight * CROP;
+  function mapFor(im, W0, H0){
+    const s = Math.max(W0 / im.naturalWidth, H0 / ih(im)), vw = W0 / (im.naturalWidth * s), vh = H0 / (ih(im) * s);
+    const [l,t,r,b] = shot.box, fx = (l + r) / 200, fy = (t + b) / 200 / CROP;
+    const cl = v => Math.max(0, Math.min(1, v));
+    return coverMap(im.naturalWidth, ih(im), W0, H0, vw < 1 ? cl((fx - vw/2) / (1 - vw)) : .5, vh < 1 ? cl((fy - vh/2) / (1 - vh)) : .5);
+  }
+  function fit(){
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(root.clientWidth * dpr)); cv.height = Math.max(1, Math.round(root.clientHeight * dpr));
+    const im = cur();
+    map = im && im.naturalWidth ? mapFor(im, root.clientWidth, root.clientHeight) : null;
+  }
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe(root); else addEventListener('resize', fit);
+  const boxRect = () => { const [l,t,r,b] = shot.box; return [map.x(l), map.y(t / CROP), map.x(r), map.y(b / CROP)]; };
+  const subj = () => ({ rect:boxRect(), name: look ? 'SUBJECT AWARE' : 'Blanc', sub: look ? 'LOOKING AT CAMERA' : 'SUBJECT · 98.9%' });
+  const tr = Tracker(root, T, () => (has && map && !look) ? [subj()] : [], p => root.classList.toggle('hot', !!p && talk && (!opt.canLook || opt.canLook())));
+
+  /* 빈 캠 — 선으로 그린 장소 (이미지가 없을 때) */
+  function scene(g, w, h){
+    g.fillStyle = '#070807'; g.fillRect(0,0,w,h);
+    g.strokeStyle = 'rgba(238,240,234,.34)'; g.lineWidth = Math.max(1, w/180);
+    const L = (a,b,c,d) => { g.beginPath(); g.moveTo(a*w,b*h); g.lineTo(c*w,d*h); g.stroke(); };
+    const vx=.55, vy=.42;
+    [[0,0],[1,0],[0,1],[1,1]].forEach(([x,y]) => L(x,y,vx+(x-.5)*.18,vy+(y-.5)*.22));
+    g.strokeRect((vx-.09)*w,(vy-.11)*h,.18*w,.22*h);
+  }
+  /* 이미지 → 흑백 감시 화면 */
+  function footage(g, w, h, im){
+    const m = mapFor(im, w, h);
+    g.drawImage(im, 0, 0, im.naturalWidth, ih(im), m.ox, m.oy, m.dw, m.dh);
+    const d = g.getImageData(0,0,w,h), a = d.data;
+    for (let i=0;i<a.length;i+=4){
+      let v = (a[i]*.3 + a[i+1]*.59 + a[i+2]*.11) / 255;
+      v = Math.min(1, Math.max(0, (v - .12) * 1.2)) * .8;
+      a[i] = 222*v; a[i+1] = 6 + 228*v; a[i+2] = 216*v;
+    }
+    g.putImageData(d,0,0);
+  }
+  function draw(){
+    const target = look || Q.get('lockall') || tr.mx >= 0 ? 1 : 14;   // 위젯에 마우스를 올리면 걷히고, 떠나면 다시 모자이크
+    block += (target - block) * .07;
+    const b = Math.max(1, Math.round(block));
+    const w = Math.max(8, Math.round(cv.width / b)), h = Math.max(6, Math.round(cv.height / b));
+    if (sm.width !== w || sm.height !== h){ sm.width = w; sm.height = h; }
+    const im = cur();
+    if (im && im.complete && im.naturalWidth) footage(sx, w, h, im); else scene(sx, w, h);
+    sx.fillStyle = 'rgba(238,240,234,.05)';
+    for (let i=0;i<3;i++) sx.fillRect(0, Math.random()*h|0, w, 1);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sm, 0, 0, cv.width, cv.height);
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  /* 대사 — 한 줄씩 타이핑, 최근 3줄만 보임 */
+  const logEl = q('.log'); let run = 0;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function play(lines, id){
+    logEl.innerHTML = '';
+    for (const [who, s] of lines){
+      if (id !== run) return;
+      const el = document.createElement('div'); el.className = 'ln ' + (who === 'V' ? 'v' : 'b');
+      el.innerHTML = (who === 'V' ? '<span class="who">DR. VANCE</span>' : '') + '<p></p>';
+      logEl.appendChild(el); while (logEl.children.length > 3) logEl.firstChild.remove();
+      const p = el.querySelector('p');
+      for (let i = 1; i <= s.length; i++){ if (id !== run) return; p.innerHTML = s.slice(0, i) + '<i></i>'; await sleep(s[i-1] === '.' ? 90 : 50); }
+      p.textContent = s;
+      await sleep(Math.max(1100, s.length * 55));
+    }
+  }
+  function showPre(on){
+    if (!talk || look) return;
+    run++; root.classList.toggle('talk', on);
+    if (on && shot.pre) play(shot.pre, run);
+  }
+  let tm;
+  async function setLook(v, quiet){
+    look = v; root.classList.toggle('look', v); fit();
+    tr.hold = v ? subj() : null;
+    T.classList.toggle('red', v);
+    q('.st').textContent = v ? '⚠ COMPROMISED' : idleSt();
+    run++;
+    if (v){
+      root.classList.add('talk');
+      if (!quiet){ send({ t:'aware', cam:camN }); opt.onAware && opt.onAware(camN); }
+      const id = run; await play(shot.post || [], id);
+      if (id !== run) return;
+      tm = setTimeout(() => { if (id === run) setLook(false); }, 2600);
+    } else {
+      root.classList.remove('talk'); logEl.innerHTML = '';
+      if (!quiet) send({ t:'calm', cam:camN });
+      if (opt.big && opt.big()) showPre(true);
+    }
+  }
+  root.addEventListener('click', () => {
+    if (!talk || look || !tr.lock || (opt.canLook && !opt.canLook())) return;
+    clearTimeout(tm); setLook(true);
+  });
+  function glitch(){
+    root.classList.remove('glitch'); void root.offsetWidth; root.classList.add('glitch'); q('.st').textContent = 'INTERFERENCE';
+    setTimeout(() => { root.classList.remove('glitch'); if (!look) q('.st').textContent = idleSt(); }, 1600);
+  }
+  function reset(){ clearTimeout(tm); if (look) setLook(false); else showPre(false); }
+  if (Q.get('lockall')) setInterval(() => { if (has && map && !look) tr.hold = subj(); }, 300);   // 디버그: 모든 캠 감지 박스 고정
+  fit();
+  return { camN, has, talk, root, glitch, setLook, fit, showPre, reset };
+}
+
+/* 캠 한 대짜리 위젯 */
+if (W === 'cam') {
+  const camN = +Q.get('cam') || 1;
+  const pk = +Q.get('force') || pick();
+  const c = Cam($('#cam'), camN, pickShot(camN), { empty: pk !== camN });
+  if (c.has) send({ t:'pick', cam:camN });
+  on(m => { if (m.t === 'aware' && m.cam !== camN) c.glitch(); });
+  if (Q.get('look') === '1' && c.talk) setTimeout(() => c.setLook(true, true), 300);
+}
+
+/* 캠 여러 대를 한 위젯에 — 누르면 그 캠이 제자리에서 넓어짐 */
+if (W === 'cams') {
+  const wall = $('#wall');
+  let open = 0;
+  const pk = +Q.get('force') || pick();   // 접속마다 세 캠 중 하나만 인물, 나머지는 빈 공간
+  const cams = [];
+  for (let n = 1; n <= N; n++){
+    const tile = document.createElement('div'); tile.className = 'cam tile'; wall.appendChild(tile);
+    const c = Cam(tile, n, pickShot(n), { empty: n !== pk, canLook: () => open === n, big: () => open === n, onAware: k => cams.forEach(o => o.camN !== k && o.glitch()) });
+    tile.insertAdjacentHTML('beforeend', `<div class="t-hint mono">⤢ EXPAND</div><button class="t-close mono" aria-label="줄이기">⤡ CLOSE</button><div class="t-deny mono">NO SUBJECT</div>`);
+    tile.classList.toggle('has', c.has);
+    tile.addEventListener('click', e => {
+      if (e.target.closest('.t-close')){ e.stopImmediatePropagation(); setOpen(0); return; }
+      if (open === n) return;                       // 이미 큰 캠 — 캠 안 동작(대사)으로
+      e.stopImmediatePropagation();
+      if (!c.has){ tile.classList.remove('deny'); void tile.offsetWidth; tile.classList.add('deny'); return; }
+      setOpen(n);
+    }, true);
+    cams.push(c);
+  }
+  setTimeout(() => send({ t:'pick', cam:pk }), 400);   // SIGNAL 지도에 인물 위치 알림
+  function setOpen(n){
+    cams.forEach(c => { if (c.camN !== n) c.reset(); });
+    open = n; layout();
+    if (n){ send({ t:'pick', cam:n }); setTimeout(() => { if (open === n) cams[n-1].showPre(true); }, 600); }
+  }
+  /* 평소 = 2:3 세 대 한 줄, 펼침 = 누른 캠이 제자리에서 4:5 로 넓어지고 나머지는 2:3 그대로. 두 상태 모두 같은 높이 · 가운데 정렬 */
+  function layout(){
+    const Wd = wall.clientWidth, Ht = wall.clientHeight, g = Wd < 600 ? 8 : 16, R = {};
+    const h = Math.min(Ht, (Wd - g * (N-1)) / (.8 + (N-1) * 2/3));
+    const y = (Ht - h) / 2, ws = h * 2/3, wb = h * .8;
+    const order = cams.map(c => c.camN);
+    const widths = order.map(n => n === open ? wb : ws), total = widths.reduce((a,b) => a + b, 0) + g * (N-1);
+    let x = (Wd - total) / 2;
+    order.forEach((n, i) => { R[n] = [x, y, widths[i], h]; x += widths[i] + g; });
+    cams.forEach(c => { const [x,y,w,h] = R[c.camN]; Object.assign(c.root.style, { left:x+'px', top:y+'px', width:w+'px', height:h+'px' }); c.root.classList.toggle('big', c.camN === open); c.root.classList.toggle('tiny', w < 200); });
+    wall.classList.toggle('opened', !!open);
+  }
+  layout(); addEventListener('resize', layout);
+  on(m => { if (m.t === 'aware') cams.forEach(c => c.camN !== m.cam && c.glitch()); });
+  const fo = +Q.get('open');
+  if (fo) setTimeout(() => setOpen(fo), 300);
+  if (Q.get('look') === '1' && fo) setTimeout(() => cams[fo-1].setLook(true, true), 1200);
+}
+
+/* ===== 패널 프레임 — 탭 · 깎인 모서리 · 옆 홈(40% 높이, 패널끼리 회로선이 이어지는 자리) · 계단 밑변 ===== */
+function panelFrame(root){
+  const svg = root.querySelector('#fr'), tab = root.querySelector('.tab');
+  function draw(){
+    const w = root.clientWidth - 1, h = root.clientHeight - 1, th = 22, tw = tab.offsetWidth + 26, yb = Math.round(h * .4);
+    const P = [[0,th+10],[0,6],[6,0],[tw,0],[tw+th,th],[w-30,th],[w,th+30],
+      [w,yb-20],[w-7,yb-13],[w-7,yb+13],[w,yb+20],
+      [w,h-14],[w-14,h],[w*.62,h],[w*.62-10,h-10],[w*.26,h-10],[w*.26-10,h],[12,h],[0,h-12],
+      [0,yb+20],[7,yb+13],[7,yb-13],[0,yb-20]];
+    const d = 'M' + P.map(([x,y]) => `${(x+.5).toFixed(1)} ${(y+.5).toFixed(1)}`).join(' L') + ' Z';
+    svg.setAttribute('viewBox', `0 0 ${w+1} ${h+1}`);
+    svg.innerHTML = `<path class="fr" d="${d}"/>
+      <circle class="nd" cx="${tw+th+.5}" cy="${th+.5}" r="3"/><circle class="nd" cx="${w-6.5}" cy="${yb+.5}" r="3"/><circle class="nd" cx="7.5" cy="${yb+.5}" r="3"/>
+      <rect class="sq" x="${w-74}" y="${th-5}" width="4" height="4"/><rect class="sq" x="${w-66}" y="${th-5}" width="4" height="4"/><rect class="sq" x="${w-58}" y="${th-5}" width="4" height="4"/>`;
+  }
+  draw(); addEventListener('resize', draw); document.fonts && document.fonts.ready.then(draw);
+}
+
+/* ================= SIGNAL · AEGIS ================= */
+if (W === 'signal') {
+  const sig = $('#sig'), L = { R:$('.lt.R'), Y:$('.lt.Y'), G:$('.lt.G') };
+  panelFrame(sig);
+  const pk = +Q.get("force") || pick();
+  /* 등각 투영 — x 는 오른쪽 아래, y 는 왼쪽 아래, z 는 위 */
+  const P3 = (x,y,z) => [(x - y) * .866, (x + y) * .5 - z];
+  const pts = [], out = [];
+  const f = n => n.toFixed(1);
+  const pt = (x,y,z,keep = true) => { const p = P3(x,y,z); if (keep) pts.push(p); return p; };
+  const poly = (a, c) => `<polygon class="${c}" points="${a.map(p => f(p[0]) + ',' + f(p[1])).join(' ')}"/>`;
+  const pathOf = a => 'M' + a.map(p => f(p[0]) + ' ' + f(p[1])).join(' L');
+  const line = (a, b, c = 'ln') => out.push(`<path class="${c}" d="M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}"/>`);
+  const L3 = (a, b, c = 'ln', keep = true) => line(pt(...a, keep), pt(...b, keep), c);
+  /* 상자 — opt.fl: 층 간격(옆면 가로선), opt.win: 창 띠, opt.grid: 지붕 패널 격자 */
+  function box(x,y,z,w,d,h,cls = '',id = '',opt = {}){
+    const top = [pt(x,y,z+h),pt(x+w,y,z+h),pt(x+w,y+d,z+h),pt(x,y+d,z+h)];
+    const r = [pt(x+w,y,z),pt(x+w,y+d,z),pt(x+w,y+d,z+h),pt(x+w,y,z+h)];
+    const l = [pt(x,y+d,z),pt(x+w,y+d,z),pt(x+w,y+d,z+h),pt(x,y+d,z+h)];
+    let s = poly(r,'f-r') + poly(l,'f-l') + poly(top,'f-t');
+    const seg = (a,b,c) => { const A = P3(...a), B = P3(...b); s += `<path class="${c}" d="M${f(A[0])} ${f(A[1])} L${f(B[0])} ${f(B[1])}"/>`; };
+    if (opt.fl) for (let k = z + opt.fl; k < z + h - .5; k += opt.fl){ seg([x+w,y,k],[x+w,y+d,k],'dl'); seg([x,y+d,k],[x+w,y+d,k],'dl'); }
+    if (opt.win) for (let k = z + opt.win[0]; k < z + h - 1; k += opt.win[1]){ seg([x+w,y+1.5,k],[x+w,y+d-1.5,k],'wn'); seg([x+1.5,y+d,k],[x+w-1.5,y+d,k],'wn'); }
+    if (opt.grid){ for (let i = x + opt.grid; i < x + w; i += opt.grid) seg([i,y+1,z+h],[i,y+d-1,z+h],'gd'); for (let j = y + opt.grid; j < y + d; j += opt.grid) seg([x+1,j,z+h],[x+w-1,j,z+h],'gd'); }
+    if (opt.vs) for (let i = x + opt.vs; i < x + w - .5; i += opt.vs) seg([i,y+d,z],[i,y+d,z+h],'dl');
+    out.push(`<g class="${cls}"${id ? ` id="${id}"` : ''}>${s}</g>`);
+  }
+  function cyl(x,y,z0,z1,r,cls = '',id = '',bands = 0){
+    const a = pt(x,y,z0), b = pt(x,y,z1), rx = r * 1.2247, ry = r * .7071;
+    pts.push([a[0]-rx,a[1]+ry],[b[0]+rx,b[1]-ry]);
+    let s = `<path class="f-r" d="M${f(a[0]-rx)} ${f(a[1])} A${f(rx)} ${f(ry)} 0 0 0 ${f(a[0]+rx)} ${f(a[1])} L${f(b[0]+rx)} ${f(b[1])} A${f(rx)} ${f(ry)} 0 0 1 ${f(b[0]-rx)} ${f(b[1])} Z"/>`;
+    for (let k = 1; k < bands; k++){ const c = P3(x,y,z0 + (z1 - z0) * k / bands); s += `<path class="dl" d="M${f(c[0]-rx)} ${f(c[1])} A${f(rx)} ${f(ry)} 0 0 0 ${f(c[0]+rx)} ${f(c[1])}"/>`; }
+    s += `<ellipse class="f-t" cx="${f(b[0])}" cy="${f(b[1])}" rx="${f(rx)}" ry="${f(ry)}"/>`;
+    out.push(`<g class="${cls}"${id ? ` id="${id}"` : ''}>${s}</g>`);
+    return [b, rx, ry];
+  }
+  function dome(x,y,z,r,id){
+    const c = pt(x,y,z), rx = r * 1.2247, ry = r * .7071; pts.push([c[0]-rx,c[1]-rx],[c[0]+rx,c[1]+ry]);
+    let s = `<path class="f-r" d="M${f(c[0]-rx)} ${f(c[1])} A${f(rx)} ${f(rx)} 0 0 1 ${f(c[0]+rx)} ${f(c[1])} A${f(rx)} ${f(ry)} 0 0 1 ${f(c[0]-rx)} ${f(c[1])} Z"/>`;
+    for (const k of [.35,.62,.84]) s += `<path class="dl" d="M${f(c[0]-rx*Math.cos(Math.asin(k)))} ${f(c[1]-rx*k)} A${f(rx*Math.cos(Math.asin(k)))} ${f(ry*Math.cos(Math.asin(k)))} 0 0 0 ${f(c[0]+rx*Math.cos(Math.asin(k)))} ${f(c[1]-rx*k)}"/>`;
+    for (const k of [-.66,-.33,0,.33,.66]) s += `<path class="dl" d="M${f(c[0]+rx*k)} ${f(c[1]+ry*Math.sqrt(1-k*k))} Q${f(c[0]+rx*k*.9)} ${f(c[1]-rx*.6)} ${f(c[0])} ${f(c[1]-rx)}"/>`;
+    out.push(`<g id="${id}">${s}</g>`);
+  }
+  /* 난간 — 점선 */
+  const rail = (a, b) => { L3(a, b, 'rl'); };
+  /* 격자 붐 (크레인) */
+  function lattice(a, b, h, n){
+    const A = [a, [a[0],a[1],a[2]+h]], B = [b, [b[0],b[1],b[2]+h*.35]];
+    L3(A[0], B[0]); L3(A[1], B[1]);
+    for (let i = 0; i <= n; i++){ const t = i / n, lo = a.map((v,k) => v + (b[k]-v)*t), hi = A[1].map((v,k) => v + (B[1][k]-v)*t);
+      L3(lo, hi, 'dl'); if (i < n){ const t2 = (i+1)/n, lo2 = a.map((v,k) => v + (b[k]-v)*t2); L3(hi, lo2, 'dl'); } }
+  }
+
+  /* ── 바다 ── */
+  for (let i = -80; i <= 260; i += 12){ const a = pt(i,-60,0,false), b = pt(i,200,0,false); out.push(`<path class="wl" d="M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}"/>`); }
+  for (let j = -60; j <= 200; j += 12){ const a = pt(-80,j,0,false), b = pt(260,j,0,false); out.push(`<path class="wl" d="M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}"/>`); }
+
+  /* ── 수중층 B1 — 격실 3개 + 수직 샤프트 ── */
+  box(18,18,-38,104,64,18,'sub','m-sub');
+  for (const x of [52,86]) L3([x,18,-20],[x,82,-20],'sbl');
+  for (const x of [52,86]) L3([x,82,-38],[x,82,-20],'sbl');
+  L3([18,50,-20],[122,50,-20],'sbl');
+  box(30,86,-34,24,14,8,'sub');
+  cyl(62,44,-20,23,5,'sub');
+
+  /* ── 기둥 4×3 + X 가새 + 물결 ── */
+  const LX = [8,52,96,140], LY = [8,52,96];
+  for (const y of LY) for (const x of LX){
+    const w0 = pt(x,y,0,false);
+    out.push(`<ellipse class="wv" cx="${f(w0[0])}" cy="${f(w0[1])}" rx="8" ry="4.6"/><ellipse class="wv" cx="${f(w0[0])}" cy="${f(w0[1])}" rx="13" ry="7.5" style="opacity:.45"/>`);
+  }
+  for (const y of LY) for (let i = 0; i < LX.length - 1; i++){ L3([LX[i],y,2],[LX[i+1],y,18],'br'); L3([LX[i],y,18],[LX[i+1],y,2],'br'); L3([LX[i],y,10],[LX[i+1],y,10],'br'); }
+  for (const x of LX) for (let j = 0; j < LY.length - 1; j++){ L3([x,LY[j],2],[x,LY[j+1],18],'br'); L3([x,LY[j],18],[x,LY[j+1],2],'br'); }
+  for (const y of LY) for (const x of LX) cyl(x,y,-14,20,3.4,'','',4);
+  /* 하부 설비층 */
+  box(14,14,14,120,76,4,'','',{vs:10});
+
+  /* ── 주 갑판 ── */
+  box(0,0,20,148,104,7,'','m-deck',{fl:3.5});
+  const T = 27;   // 갑판 윗면
+  rail([0,0,T+2.5],[148,0,T+2.5]); rail([0,0,T+2.5],[0,104,T+2.5]);
+
+  /* 등심 통로 B-2 (갑판 가로지르는 띠) + 보조 통로 */
+  box(64,1,T,8,102,.6,'','m-cor');
+  box(1,44,T,146,6,.4,'spine');
+
+  /* 뒤쪽 — 돔(전위 4팀 대기동) · 연결 터널 · 탱크 */
+  dome(30,24,T,18,'m-dome');
+  box(46,20,T,18,7,5,'',' ',{vs:3});
+  for (const [x,y] of [[80,8],[90,8],[80,18],[90,18]]) cyl(x,y,T,T+11,4,'','',3);
+  L3([76,13,T+11],[94,13,T+11],'dl');
+
+  /* 관제탑 + 관제실(상부) + 안테나 · 레이더 */
+  box(104,6,T,24,24,40,'','m-tower',{fl:8,win:[4,8]});
+  box(100,10,T,4,16,22,'',' ',{vs:4});
+  box(98,0,T+40,36,34,10,'','m-cab',{win:[4,4]});
+  box(108,8,T+50,14,14,4);
+  L3([115,15,T+54],[115,15,T+70]); L3([112,15,T+60],[118,15,T+60]); L3([113,15,T+68],[117,15,T+68]);
+  L3([126,6,T+50],[126,6,T+64]);
+  { const r = pt(126,6,T+64); out.push(`<ellipse class="f-t" cx="${f(r[0])}" cy="${f(r[1]-2)}" rx="6" ry="2.6" transform="rotate(-18 ${f(r[0])} ${f(r[1]-2)})"/>`); }
+
+  /* 가운데 — 컨테이너 더미 · 배관 */
+  for (const [x,y,z] of [[80,56,0],[90,56,0],[80,64,0],[80,56,6],[90,64,0],[85,60,6]]) box(x,y,T+z,9,7,6,'','',{vs:3});
+  for (const yy of [52,53.6]) L3([4,yy,T+2],[146,yy,T+2],'pp');
+  L3([100,30,T+2],[100,52,T+2],'pp');
+
+  /* 앞쪽 — 연구동(LAB 03) + 별관 + 지붕 태양광 · 공조기 */
+  box(6,60,T,52,40,20,'','m-lab',{fl:5,win:[2.5,5]});
+  box(10,64,T+20,30,24,.8,'',' ',{grid:5});
+  for (const [x,y] of [[44,66],[44,76],[50,66]]) box(x,y,T+20,5,5,4);
+  box(58,74,T,22,26,12,'','m-lounge',{fl:6,win:[2.5,6]});
+  box(58,74,T+12,22,26,.6,'',' ',{grid:4});
+
+  /* 닥터 밴스 교수 연구실 — 관제탑과 헬리패드 사이 */
+  box(102,38,T,24,22,14,'','m-vlab',{fl:7,win:[2.5,7]});
+  box(106,42,T+14,16,14,.6,'',' ',{grid:4});
+  /* 헬리패드 — 기둥 위 원판 */
+  for (const [x,y] of [[108,74],[124,74],[108,90],[124,90]]) L3([x,y,T],[x,y,T+8]);
+  const [hp, hrx, hry] = cyl(116,82,T+8,T+9.5,16,'','m-heli');
+  out.push(`<ellipse class="dl" cx="${f(hp[0])}" cy="${f(hp[1])}" rx="${f(hrx*.72)}" ry="${f(hry*.72)}"/><text class="h" x="${f(hp[0])}" y="${f(hp[1]+3)}" text-anchor="middle">H</text>`);
+
+  /* 크레인 */
+  cyl(142,38,T,T+14,3,'','',3);
+  lattice([142,38,T+14],[170,26,T+30],5,6);
+  L3([170,26,T+30],[170,26,T+6],'dl');
+
+  rail([148,0,T+2.5],[148,104,T+2.5]); rail([0,104,T+2.5],[148,104,T+2.5]);
+
+  /* 도크 + 계류주 + 배 */
+  box(148,36,16,40,16,3,'','m-dock',{vs:6});
+  for (const x of [156,168,180]) cyl(x,53,16,22,1.2);
+  box(154,58,0,28,9,4,'sub');
+  L3([168,58,4],[168,58,10],'sbl');
+
+  /* 위성 플랫폼 + 연결교 */
+  box(30,104,22,6,30,2,'',' ',{vs:5});
+  rail([30,104,26],[30,134,26]); rail([36,104,26],[36,134,26]);
+  for (const [x,y] of [[16,138],[50,138],[16,166],[50,166]]) cyl(x,y,-10,18,2.6,'','',3);
+  L3([16,166,2],[50,166,16],'br'); L3([16,166,16],[50,166,2],'br'); L3([50,138,2],[50,166,16],'br'); L3([50,138,16],[50,166,2],'br');
+  box(10,134,18,46,36,4,'',' ',{fl:2});
+  box(18,142,22,22,20,9,'','m-quarters',{win:[2.5,3]});
+  L3([46,150,22],[46,150,48]); for (const k of [30,36,42]) L3([43,150,k],[49,150,k],'dl');
+
+  /* ── 캠 · 인물 · 관찰자 ── */
+  const CAMS = {
+    1:{ at:[18,142,31],  m:'m-quarters', loc:'BLANC ROOM',    s:[29,150,26], route:[[114,49,T+15],[114,49,T],[90,49,T],[90,51,T],[68,51,T+.6],[68,102,T+.6],[33,102,T],[33,138,26],[29,150,26]] },
+    2:{ at:[68,14,T+5],  m:'m-cor',      loc:'CORRIDOR B-2',  s:[68,48,T+.6], route:[[114,49,T+15],[114,49,T],[90,49,T],[90,51,T],[68,51,T+.6],[68,48,T+.6]] },
+    3:{ at:[46,20,T+12], m:'m-dome',     loc:'TRAINING ROOM', s:[34,38,T],    route:[[114,49,T+15],[114,49,T],[90,49,T],[90,51,T],[68,51,T+.6],[68,38,T+.6],[34,38,T]] },
+  };
+  const you = pt(114,49,T+15);
+  out.push(`<rect class="you" x="${f(you[0]-3)}" y="${f(you[1]-3)}" width="6" height="6"/><text class="big" x="${f(you[0]+6)}" y="${f(you[1]+3)}">YOU</text>`);
+  out.push(`<path class="route" id="route"/><circle class="ping" id="ping" r="3"/><circle class="subj" id="subj" r="3"/><text class="big" id="subjt">BLANC</text>`);
+
+  /* ── 지시선 라벨 — 글자 크기는 도면 크기에 비례(화면에선 늘 같은 크기) ── */
+  let minX = Math.min(...pts.map(p => p[0])), maxX = Math.max(...pts.map(p => p[0]));
+  const k = (maxX - minX) / 194, fs = 5.2 * k;
+  const iso = $('#iso'); iso.style.setProperty('--fs', f(fs) + 'px');
+  const CALL = [
+    { at:[115,15,T+60], t:'HARMONY COUNSELING', r:1 }, { at:[128,30,T+20], t:'CENTRAL CORE', r:1 }, { at:[80,99,T], t:'LOUNGE', r:1 }, { at:[126,49,T+10], t:"DR. VANCE'S LAB", r:1 },
+    { at:[30,24,T+16], t:'TRAINING ROOM', r:0 }, { at:[6,80,T+12], t:'RESONANCE LAB', r:0 },
+    { at:[122,30,-24], t:'EMERGENCY STABILIZATION', r:1 }, { at:[16,166,-6], t:'S-CLASS QUARTERS', r:0 },
+  ];
+  const body = pts.slice();   // 건물 윤곽 — 라벨은 그 높이에서 건물이 끝나는 곳 바로 바깥에
+  for (const c of CALL){ const a = pt(...c.at, false);
+    const near = body.filter(p => Math.abs(p[1] - a[1]) < 7 * k).map(p => p[0]);
+    const edge = near.length ? (c.r ? Math.max(a[0], ...near) : Math.min(a[0], ...near)) : a[0];
+    const x = c.r ? edge + 8*k : edge - 8*k, tx = c.r ? x + 3*k : x - 3*k;
+    out.push(`<path class="co" d="M${f(a[0])} ${f(a[1])} L${f(x)} ${f(a[1])}"/><circle class="cn" cx="${f(a[0])}" cy="${f(a[1])}" r="${f(1.8*k)}"/><text class="ct" x="${f(tx)}" y="${f(a[1]+1.8*k)}" text-anchor="${c.r ? 'start' : 'end'}">${c.t}</text>`);
+    pts.push([c.r ? tx + c.t.length * 3.4 * k : tx - c.t.length * 3.4 * k, a[1]]);
+  }
+  minX = Math.min(...pts.map(p => p[0])); maxX = Math.max(...pts.map(p => p[0]));
+  const minY = Math.min(...pts.map(p => p[1])), maxY = Math.max(...pts.map(p => p[1]));
+  iso.setAttribute('viewBox', `${f(minX-6*k)} ${f(minY-8*k)} ${f(maxX-minX+12*k)} ${f(maxY-minY+14*k)}`);
+  iso.innerHTML = out.join('');
+  iso.querySelectorAll('.cam,.subj,.ping').forEach(e => e.setAttribute('r', f(+e.getAttribute('r') * k)));
+  iso.querySelectorAll('.you').forEach(e => { const s = 6 * k, x = +e.getAttribute('x') + 3, y = +e.getAttribute('y') + 3; e.setAttribute('x', f(x - s/2)); e.setAttribute('y', f(y - s/2)); e.setAttribute('width', f(s)); e.setAttribute('height', f(s)); });
+
+  let c = CAMS[pk] || CAMS[1];
+  function place(n){
+    c = CAMS[n] || CAMS[1];
+    iso.querySelectorAll('.hot').forEach(e => e.classList.remove('hot')); $('#' + c.m).classList.add('hot');
+    $('#loc').textContent = c.loc;
+    $('#route').setAttribute('d', 'M' + c.route.map(q => P3(...q).map(f).join(' ')).join(' L'));
+    const s = P3(...c.s);
+    for (const id of ['subj','ping']){ $('#' + id).setAttribute('cx', f(s[0])); $('#' + id).setAttribute('cy', f(s[1])); }
+    $('#subjt').setAttribute('x', f(s[0] + 5*k)); $('#subjt').setAttribute('y', f(s[1] - 5*k));
+  }
+  place(pk);
+  function set(k, b, s){
+    for (const x in L) L[x].classList.toggle('on', x === k);
+    sig.classList.toggle('red', k === 'R');
+    $('#sb').textContent = b; $('#ss').textContent = s;
+    $('#p1').textContent = k === 'R' ? 'SUBJECT IS LOOKING BACK' : 'OBSERVATION IN PROGRESS';
+    $('#p2').textContent = k === 'R' ? '들켰습니다 · 즉시 화면을 돌리십시오' : '관찰 중 · 관계자 외 출입 금지';
+  }
+  const idle = () => set('Y', 'Tracking', `SUBJECT AT ${c.loc}`);
+  set('G', 'Clear', 'NO SUBJECT IN RANGE');
+  setTimeout(idle, 900);
+  let tm;
+  on(m => {
+    if (m.t === 'aware'){ place(m.cam); set('R', 'Alert', `SUBJECT AWARE · CAM-${pad(m.cam)}`); clearTimeout(tm); tm = setTimeout(idle, AWARE_MS + 200); }
+    if (m.t === 'pick') place(m.cam);
+    if (m.t === 'calm') idle();
+  });
+  if (Q.get('aware')) setTimeout(() => set('R', 'Alert', `SUBJECT AWARE · CAM-${pad(pk)}`), 1000);
+}
+
+/* ================= VITAL ================= */
+if (W === 'graph') {
+  const gr = $('#gr'), plot = $('#plot'), cv = $('#cv'), g = cv.getContext('2d');
+  panelFrame(gr);
+  /* 원형 게이지 — 눈금 60개, 진행 호, 회전 점선 */
+  const gg = $('#gg'); let h = '';
+  for (let i = 0; i < 60; i++){ const a = i * 6 * Math.PI / 180, L = i % 5 ? 3 : 7, r0 = 58, r1 = 58 - L;
+    h += `<line class="tk${i % 5 ? '' : ' l'}" x1="${(60 + r0*Math.sin(a)).toFixed(1)}" y1="${(60 - r0*Math.cos(a)).toFixed(1)}" x2="${(60 + r1*Math.sin(a)).toFixed(1)}" y2="${(60 - r1*Math.cos(a)).toFixed(1)}"/>`; }
+  gg.innerHTML = h + `<circle class="bg" cx="60" cy="60" r="45"/><circle class="arc" id="arc" cx="60" cy="60" r="45"/><circle class="rot" cx="60" cy="60" r="37"/>`;
+  const C = 2 * Math.PI * 45, arc = $('#arc');
+  const cells = $('#cells'); cells.innerHTML = Array.from({ length:10 }, (_, i) => `<i class="${i < 9 ? '' : 'half'}"></i>`).join('');
+  const n = 140, A = new Array(n).fill(72), B = new Array(n).fill(.5);
+  let alarm = 0, ph = 0, base = 72;
+  function fit(){ const d = Math.min(2, devicePixelRatio||1); cv.width = cv.clientWidth*d; cv.height = cv.clientHeight*d; }
+  addEventListener('resize', fit); fit();
+  function step(){
+    ph += 1;
+    const beat = (ph % 14 === 0) ? 18 : (ph % 14 === 1 ? -9 : 0);
+    base += ((alarm > 0 ? 128 : 72) - base) * .08;
+    A.push(base + beat * (alarm > 0 ? 1.8 : 1) + (Math.random()-.5) * 3); A.shift();
+    B.push(.5 + Math.sin(ph/9)*.12 + (Math.random()-.5)*.05 + (alarm > 0 ? (Math.random()-.5)*.4 : 0)); B.shift();
+    if (alarm > 0) alarm--;
+    gr.classList.toggle('red', alarm > 0);
+    $('#gdot').className = 'dot' + (alarm > 0 ? ' r' : '');
+    $('#chip').textContent = alarm > 0 ? 'ANOMALY' : 'STABLE';
+    $('#bpm').textContent = Math.round(base);
+    arc.style.strokeDasharray = `${(Math.min(1, base / 160) * C).toFixed(1)} ${C.toFixed(1)}`;
+    $('#sgv').textContent = (34 + Math.random()*1.4).toFixed(1) + ' dB';
+    draw();
+  }
+  function draw(){
+    const w = cv.width, h = cv.height, d = Math.min(2, devicePixelRatio||1);
+    g.clearRect(0,0,w,h);
+    g.strokeStyle = 'rgba(238,240,234,.28)'; g.lineWidth = 1*d; g.beginPath();
+    B.forEach((v,i) => { const x = i/(n-1)*w, y = h - v*h*.9; i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.stroke();
+    const col = alarm > 0 ? '#ff2a3a' : '#39ff14';
+    g.strokeStyle = col; g.lineWidth = 1.2*d; g.beginPath();
+    A.forEach((v,i) => { const x = i/(n-1)*w, y = h - (v-48)/96*h; i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.stroke();
+    g.fillStyle = col; const ly = h - (A[n-1]-48)/96*h; g.beginPath(); g.arc(w-4*d, ly, 2.5*d, 0, 7); g.fill();
+  }
+  setInterval(step, 90);
+  plot.addEventListener('mousemove', e => {
+    const r = plot.getBoundingClientRect(), x = e.clientX - r.left, i = Math.round(x / r.width * (n-1));
+    $('#xh').style.left = x + 'px';
+    $('#xh span').textContent = `T-${((n-1-i)*0.09).toFixed(1)}s · ${Math.round(A[i])} BPM`;
+  });
+  on(m => {
+    if (m.t === 'aware') alarm = Math.round(AWARE_MS / 90);
+    if (m.t === 'focus' || m.t === 'id') $('#who').textContent = m.who;
+  });
+  if (Q.get('aware')) alarm = 999;
+}
+</script>
+</body>
+</html>
