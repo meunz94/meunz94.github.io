@@ -230,6 +230,7 @@
   .t-hint,.t-close,.t-deny{position:absolute;z-index:9;font:400 9px/1 var(--mo);letter-spacing:.16em;border-radius:999px;padding:7px 11px;pointer-events:none;opacity:0;transition:opacity .2s}
   .t-hint{right:12px;bottom:34px;color:var(--w);background:rgba(0,0,0,.6);border:1px solid var(--w4)}
   .tile.has:not(.big):hover .t-hint{opacity:1}
+  .wall.stack .t-hint{display:none}
   .t-close{all:unset;position:absolute;z-index:9;right:14px;bottom:34px;font:400 9px/1 var(--mo);letter-spacing:.16em;color:var(--w);background:rgba(0,0,0,.6);border:1px solid var(--w4);border-radius:999px;padding:7px 11px;cursor:zoom-out;display:none}
   .tile.big .t-close{display:block}
   .t-close:hover{border-color:var(--w)}
@@ -854,7 +855,16 @@ if (W === 'cams') {
   }
   /* 평소 = 2:3 세 대 한 줄, 펼침 = 누른 캠이 제자리에서 4:5 로 넓어지고 나머지는 2:3 그대로. 두 상태 모두 같은 높이 · 가운데 정렬 */
   function layout(){
-    const Wd = wall.clientWidth, Ht = wall.clientHeight, g = Wd < 600 ? 8 : 16, R = {};
+    const Wd = wall.clientWidth, Ht = wall.clientHeight, g = Wd < 600 ? 10 : 16, R = {};
+    /* 세로로 긴 칸(폰) — 한 줄에 한 대씩 세로로. 눌러도 크기는 그대로, 인물 캠이면 대사·돌아보기만 켜짐 */
+    const stack = Ht > Wd;
+    wall.classList.toggle('stack', stack);
+    if (stack){
+      const ch = (Ht - g * (N-1)) / N;
+      cams.forEach((c, i) => { Object.assign(c.root.style, { left:'0px', top:(i * (ch + g))+'px', width:Wd+'px', height:ch+'px' }); c.root.classList.toggle('big', c.camN === open); c.root.classList.remove('tiny'); });
+      wall.classList.toggle('opened', !!open);
+      return;
+    }
     const h = Math.min(Ht, (Wd - g * (N-1)) / (.8 + (N-1) * 2/3));
     const y = (Ht - h) / 2, ws = h * 2/3, wb = h * .8;
     const order = cams.map(c => c.camN);
