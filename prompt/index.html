@@ -208,22 +208,33 @@
 
 <script>
 const MODELS = [
-  { key:'v45f', label:'변연 V4.5F 프롬프트' },
-  { key:'v5f',  label:'변연 V5F 프롬프트' },
+  { key:'v45f', label:'변연 V4.5F 프롬프트', pair:'vb', cats:['base','summer','winter'] },
+  { key:'v5f',  label:'변연 V5F 프롬프트',   pair:'vb', cats:['base','summer','winter'] },
+  { key:'lm5f', label:'뤼멜 V5F 프롬프트',   pair:'lm', cats:['base'] },
 ];
 const CATS = [
   { key:'base',   label:'기본' },
   { key:'summer', label:'사복-여름' },
   { key:'winter', label:'사복-겨울' },
 ];
-const CHARS = [
+const PAIRS = {
+ vb:[
   { key:'vance', label:'Dr. Vance', kr:'변정원', meta:'35Y · 186cm · 카키색 머리 · 회색 눈',
     ok:'부드럽게 웃는 표정, 무표정, 약간 찌푸린 표정, 황당한 표정, 상기된 표정, 뼈대만 굵은 슬렌더 체형',
     ng:'지나치게 고양이상 or 강아지상, 어려보이는 얼굴, 환하게 웃거나 우는 얼굴, 근육질, 키가 작음' },
   { key:'blanc', label:'Blanc', kr:'김연수', meta:'25Y · 162cm · 검은색 머리 · 네이비색 눈',
     ok:'장난스럽게 웃는 표정, 기세등등한 표정, 감정표현이 풍부한 얼굴, 아무튼 짧은 머리, 마른 체형',
     ng:'강아지상, 아련하거나 우아한 표정, 송곳니, 볼륨감 있는 몸매, 울프컷' },
-];
+ ],
+ lm:[
+  { key:'louis', label:'Louis Brodeur', kr:'루이 브로되르', meta:'24Y · 186cm · 진저색 머리 · 연한 자안',
+    ok:'무표정, 찌푸린 표정, 웃는 표정, 화내는 표정, 사탕 먹는 포즈, 산만한 초딩 무드, 호리호리한 체형',
+    ng:'멜로 눈깔, 스윗한 표정, 근육질' },
+  { key:'melanie', label:'Melanie Ridgway', kr:'멜라니 리지웨이', meta:'24Y · 168cm · 밀금발 · 녹안',
+    ok:'호기심 많은 표정, 옅은 미소, 멍한 표정, 마른 체형',
+    ng:'무표정, 찡그린 표정, 화내는 표정, 볼륨감 있는 몸매' },
+ ],
+};
 const E = () => ({ img:'', prompt:'', negative:'' });
 const DATA = {
   v45f:{
@@ -272,11 +283,17 @@ const DATA = {
     summer:{ vance:E(), blanc:E() },
     winter:{ vance:E(), blanc:E() },
   },
+  lm5f:{
+    base:  { louis:E(), melanie:E() },
+  },
 };
 
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const label = (list, k) => list.find(x => x.key === k).label;
+const entry = m => MODELS.find(x => x.key === m);
+const catsOf = m => CATS.filter(c => entry(m).cats.includes(c.key));
+const charsOf = m => PAIRS[entry(m).pair];
 let model = null, cat = CATS[0].key;
 
 const ICON = '<svg width="15" height="15" viewBox="0 0 17 17" fill="none"><circle cx="7" cy="7" r="5.6" stroke="currentColor" stroke-width="2"/><path d="M11.2 11.2L15.5 15.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -342,10 +359,10 @@ const filled = (m, c) => c === CATS[0].key ||
 
 function render(){
   $('#val').textContent = label(MODELS, model);
-  $('#subs').innerHTML = CATS.map(c =>
+  $('#subs').innerHTML = catsOf(model).map(c =>
     `<button type="button" data-k="${c.key}" class="${c.key===cat?'on':''}" ${filled(model, c.key)?'':'disabled'}>${c.label}</button>`).join('');
   const set = DATA[model][cat];
-  $('#chars').innerHTML = CHARS.map(ch => {
+  $('#chars').innerHTML = charsOf(model).map(ch => {
     const d = set[ch.key] || E();
     return `<section class="char" data-k="${model}/${cat}/${ch.key}">
       <div class="pic">${d.img ? `<img src="${esc(d.img)}" alt="${ch.label}" draggable="false">` : '참고 사진'}</div>
@@ -401,7 +418,7 @@ $('#lb').onclick = () => $('#lb').classList.remove('on');
 const [hm, hc] = location.hash.slice(1).split('/');
 if (MODELS.some(x => x.key === hm)){
   document.documentElement.classList.add('instant');
-  open(hm, CATS.some(x => x.key === hc) && filled(hm, hc) ? hc : CATS[0].key);
+  open(hm, catsOf(hm).some(x => x.key === hc) && filled(hm, hc) ? hc : CATS[0].key);
   requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('instant')));
 }
 </script>
