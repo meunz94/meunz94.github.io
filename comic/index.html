@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <script>
 (function(){ var h=document.documentElement; if(window.__LI||(window.parent&&window.parent!==window))h.classList.add('embed');
-  function nw(){ var sw=(screen&&screen.width)||1e4, iw=h.clientWidth||window.innerWidth||1e4; var w=Math.min(sw,iw);
-    h.style.setProperty('--sw', w+'px'); h.classList.toggle('narrow', w<=640); }
-  nw(); window.addEventListener('resize', nw); window.__nw=nw; })();
+  function nw(){ var sw=(screen&&screen.width)||1e4, iw=h.clientWidth||window.innerWidth||1e4;
+    var wrap=document.querySelector('.li-wrap')||document.querySelector('.screen'); var ww=wrap?wrap.getBoundingClientRect().width:1e4;
+    var w=Math.min(sw,iw,ww>0?ww:1e4); h.style.setProperty('--sw', w+'px'); h.classList.toggle('narrow', w<=640); }
+  nw(); window.addEventListener('resize', nw); window.addEventListener('DOMContentLoaded', nw); window.addEventListener('load', nw); window.__nw=nw; })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@vanceloversclub</title>
@@ -25,19 +26,20 @@
 
   .screen{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
   html.embed, html.embed body{ height:auto; overflow:visible; }
-  html.embed .screen{ position:relative; inset:auto; min-height:calc(var(--li-vh, 1vh) * 100); }
+  html.embed .screen{ position:relative; inset:auto; min-height:calc(var(--li-vh) * 100); }
 
   /* ───────── 4칸 보드 ───────── */
   .board{
     --gap:14px;
-    width:min(640px, 92vw, calc((100vh - 120px) * 1.5));
+    width:min(640px, 92%, calc((100vh - 120px) * 1.5));
+    max-width:100%;
     aspect-ratio:3 / 2;
     display:grid;
     grid-template-columns:repeat(3, 1fr);
     grid-template-rows:repeat(2, 1fr);
     gap:var(--gap);
   }
-  html.embed .board{ width:min(640px, 92vw, calc((var(--li-vh, 1vh) * 100 - 120px) * 1.5)); }
+  html.embed .board{ width:min(640px, 92%, calc((var(--li-vh) * 100 - 120px) * 1.5)); }   /* 프레임이 vh 를 전부 var(--li-vh) 로 바꾸므로 폴백에 vh 쓰면 자기참조로 무효됨 */
   .pn{
     position:relative; margin:0; border:var(--ln) solid var(--k); background:var(--w);
     overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -128,8 +130,8 @@
   /* ───────── 좁은 화면: 2열, PAIR 가로로 NOTICE 아래 ─────────
      html.narrow 는 head 스크립트가 min(기기 화면 폭, 문서 폭) <= 640 일 때 붙임 (iframe 이 폰보다 넓어도 동작) */
   html.narrow, html.narrow body{ height:auto; overflow:auto; }
-  html.narrow .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; justify-content:flex-start; }
-  html.narrow .board{ --gap:10px; width:min(92vw, 520px, calc(var(--sw, 100vw) * .92)); margin-left:calc(var(--sw, 100vw) * .04); aspect-ratio:auto; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; }
+  html.narrow .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; }
+  html.narrow .board{ --gap:10px; width:min(92%, 520px, calc(var(--sw, 100vw) * .92)); aspect-ratio:auto; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; }
   html.narrow .pn[data-k="notice"]{ grid-area:1 / 1 / 2 / 3; aspect-ratio:2 / 1; }
   html.narrow .pn[data-k="pair"]  { grid-area:2 / 1 / 3 / 3; aspect-ratio:2 / 1; }
   html.narrow .pn[data-k="ng"]    { grid-area:3 / 1 / 4 / 2; aspect-ratio:1 / 1; }
@@ -453,6 +455,23 @@ $('#cpX').addEventListener('click', closePop);
 ov.addEventListener('click', e => { if (e.target === ov) closePop(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
 
+/* 진단: ① NOTICE 라벨을 1.5초 길게 누르면 환경 값 표시 (폰에서 배치 문제 볼 때) */
+(function(){
+  const lb = document.querySelector('.pn[data-k="notice"] .lb'); let t;
+  function show(){
+    const h = document.documentElement, wrap = document.querySelector('.li-wrap'), b = $('#board').getBoundingClientRect();
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:absolute;left:8px;top:8px;z-index:99;margin:0;padding:8px;background:#fff;border:2px solid #111;font:11px/1.4 monospace;white-space:pre-wrap;max-width:90%';
+    box.textContent = ['cls ' + h.className, 'screen ' + screen.width + 'x' + screen.height + ' dpr ' + devicePixelRatio, 'client ' + h.clientWidth + ' inner ' + window.innerWidth,
+      'wrap ' + (wrap ? Math.round(wrap.getBoundingClientRect().width) : '-'), 'board ' + Math.round(b.left) + '+' + Math.round(b.width), 'cols ' + getComputedStyle($('#board')).gridTemplateColumns,
+      'sw ' + h.style.getPropertyValue('--sw'), navigator.userAgent.slice(0, 80)].join('\n');
+    box.addEventListener('click', () => box.remove()); $('#main').appendChild(box);
+  }
+  const down = e => { t = setTimeout(() => { show(); }, 1500); };
+  const up = () => clearTimeout(t);
+  lb.addEventListener('pointerdown', down); lb.addEventListener('pointerup', up); lb.addEventListener('pointerleave', up); lb.addEventListener('pointercancel', up);
+  lb.addEventListener('contextmenu', e => e.preventDefault());
+})();
 const q = new URLSearchParams(location.search);
 /* 디버그: ?pop=notice|pair|ng|list  ?hover=notice|… (고정 커서로 호버 상태 재현) */
 if (q.get('hover')){ const p = panels.find(x => x.dataset.k === q.get('hover')); if (p) window.addEventListener('load', () => setTimeout(() => { const r = p.getBoundingClientRect(); p.classList.add('on'); showBub(p); }, 1500)); }
