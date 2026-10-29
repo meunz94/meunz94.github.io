@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<script>if(window.__LI||(window.parent&&window.parent!==window))document.documentElement.classList.add('embed');</script>
+<script>
+(function(){ var h=document.documentElement; if(window.__LI||(window.parent&&window.parent!==window))h.classList.add('embed');
+  function nw(){ var sw=(screen&&screen.width)||1e4, iw=h.clientWidth||window.innerWidth||1e4; var w=Math.min(sw,iw);
+    h.style.setProperty('--sw', w+'px'); h.classList.toggle('narrow', w<=640); }
+  nw(); window.addEventListener('resize', nw); window.__nw=nw; })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@vanceloversclub</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -120,22 +125,20 @@
   .pc .rows{ font-size:11px; gap:2px 8px; }
   .pc .rows dt{ font-size:10px; }
 
-  /* ───────── 좁은 화면: 2열, PAIR 가로로 NOTICE 아래 ───────── */
-  @media (max-width:640px){
-    html, body{ height:auto; overflow:auto; }
-    .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; }
-    .board{ --gap:10px; width:min(92vw, 520px); aspect-ratio:auto; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; }
-    .pn[data-k="notice"]{ grid-area:1 / 1 / 2 / 3; aspect-ratio:2 / 1; }
-    .pn[data-k="pair"]  { grid-area:2 / 1 / 3 / 3; aspect-ratio:2 / 1; }
-    .pn[data-k="ng"]    { grid-area:3 / 1 / 4 / 2; aspect-ratio:1 / 1; }
-    .pn[data-k="list"]  { grid-area:3 / 2 / 4 / 3; aspect-ratio:1 / 1; }
-  }
-  @media (max-width:560px){
-    .bub-t{ font-size:11.5px; }
-    .ov{ padding:14px; }
-    .cp-ttl b{ font-size:18px; }
-    .pair{ grid-template-columns:1fr; }
-  }
+  /* ───────── 좁은 화면: 2열, PAIR 가로로 NOTICE 아래 ─────────
+     html.narrow 는 head 스크립트가 min(기기 화면 폭, 문서 폭) <= 640 일 때 붙임 (iframe 이 폰보다 넓어도 동작) */
+  html.narrow, html.narrow body{ height:auto; overflow:auto; }
+  html.narrow .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; justify-content:flex-start; }
+  html.narrow .board{ --gap:10px; width:min(92vw, 520px, calc(var(--sw, 100vw) * .92)); margin-left:calc(var(--sw, 100vw) * .04); aspect-ratio:auto; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; }
+  html.narrow .pn[data-k="notice"]{ grid-area:1 / 1 / 2 / 3; aspect-ratio:2 / 1; }
+  html.narrow .pn[data-k="pair"]  { grid-area:2 / 1 / 3 / 3; aspect-ratio:2 / 1; }
+  html.narrow .pn[data-k="ng"]    { grid-area:3 / 1 / 4 / 2; aspect-ratio:1 / 1; }
+  html.narrow .pn[data-k="list"]  { grid-area:3 / 2 / 4 / 3; aspect-ratio:1 / 1; }
+  html.narrow .bub-t{ font-size:11.5px; }
+  html.narrow .ov{ padding:14px; justify-content:flex-start; }
+  html.narrow .cp{ max-width:calc(var(--sw, 100vw) - 28px); }
+  html.narrow .cp-ttl b{ font-size:18px; }
+  html.narrow .pair{ grid-template-columns:1fr; }
 </style>
 </head>
 <body>
@@ -306,8 +309,8 @@ function halftone(cv, img, cfg){
   ctx.fill();
 }
 
-const NARROW = window.matchMedia('(max-width:640px)');
-const pick = (o) => (NARROW.matches && o && o.narrow) ? Object.assign({}, o, o.narrow) : o;
+const isNarrow = () => document.documentElement.classList.contains('narrow');
+const pick = (o) => (isNarrow() && o && o.narrow) ? Object.assign({}, o, o.narrow) : o;
 const panels = [...document.querySelectorAll('.pn')];
 function applyImg(p){
   const k = p.dataset.k, cv = p.querySelector('.ht'), img = p.querySelector('.orig');
