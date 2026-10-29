@@ -50,6 +50,7 @@
   .pn[data-k="list"]  { grid-area:2 / 2 / 3 / 3; }
 
   .pn .ht, .pn .orig{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .pn .orig{ max-width:none; max-height:none; }   /* luvinfo 프레임이 img 에 max-width:100% 를 강제 → 확대(zoom) 이미지가 잘려 한쪽으로 쏠림 */
   .pn .orig{ object-fit:cover; opacity:0; filter:grayscale(1) contrast(.95); transition:opacity .22s ease; }
   .pn .ht{ opacity:1; transition:opacity .22s ease; }
   .pn.on .ht{ opacity:0; }
@@ -455,23 +456,6 @@ $('#cpX').addEventListener('click', closePop);
 ov.addEventListener('click', e => { if (e.target === ov) closePop(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
 
-/* 진단: ① NOTICE 라벨을 1.5초 길게 누르면 환경 값 표시 (폰에서 배치 문제 볼 때) */
-(function(){
-  const lb = document.querySelector('.pn[data-k="notice"] .lb'); let t;
-  function show(){
-    const h = document.documentElement, wrap = document.querySelector('.li-wrap'), b = $('#board').getBoundingClientRect();
-    const box = document.createElement('pre');
-    box.style.cssText = 'position:absolute;left:8px;top:8px;z-index:99;margin:0;padding:8px;background:#fff;border:2px solid #111;font:11px/1.4 monospace;white-space:pre-wrap;max-width:90%';
-    box.textContent = ['cls ' + h.className, 'screen ' + screen.width + 'x' + screen.height + ' dpr ' + devicePixelRatio, 'client ' + h.clientWidth + ' inner ' + window.innerWidth,
-      'wrap ' + (wrap ? Math.round(wrap.getBoundingClientRect().width) : '-'), 'board ' + Math.round(b.left) + '+' + Math.round(b.width), 'cols ' + getComputedStyle($('#board')).gridTemplateColumns,
-      'sw ' + h.style.getPropertyValue('--sw'), navigator.userAgent.slice(0, 80)].join('\n');
-    box.addEventListener('click', () => box.remove()); $('#main').appendChild(box);
-  }
-  const down = e => { t = setTimeout(() => { show(); }, 1500); };
-  const up = () => clearTimeout(t);
-  lb.addEventListener('pointerdown', down); lb.addEventListener('pointerup', up); lb.addEventListener('pointerleave', up); lb.addEventListener('pointercancel', up);
-  lb.addEventListener('contextmenu', e => e.preventDefault());
-})();
 const q = new URLSearchParams(location.search);
 /* 디버그: ?pop=notice|pair|ng|list  ?hover=notice|… (고정 커서로 호버 상태 재현) */
 if (q.get('hover')){ const p = panels.find(x => x.dataset.k === q.get('hover')); if (p) window.addEventListener('load', () => setTimeout(() => { const r = p.getBoundingClientRect(); p.classList.add('on'); showBub(p); }, 1500)); }
