@@ -84,7 +84,11 @@
       rgba(255,255,255,.72);
   }
   .ov.on{ display:flex; }
-  html.embed .ov{ position:absolute; }
+  /* 프레임 안: fixed 가 absolute 로 바뀌고 vh 가 부모 창 높이로 수시로 바뀜(모바일 주소창) → 가운데 정렬하면 팝업이 화면 밖으로 밀려 도트만 남음.
+     그래서 누른 칸 위치(--cp-top)에 붙이고, 길면 페이지가 같이 늘어나게 함 */
+  html.embed .ov{ position:absolute; inset:auto; top:0; left:0; right:0; min-height:100%; align-items:flex-start; }
+  html.embed .cp{ max-height:none; margin-top:var(--cp-top, 24px); }
+  html.embed .cp-bd{ overflow:visible; }
   .cp{
     position:relative; width:min(560px, 100%); max-height:min(82vh, 760px);
     background:var(--w); border:3px solid var(--k); box-shadow:7px 7px 0 var(--k);
@@ -117,7 +121,7 @@
   .lst{ margin:0; padding:0; list-style:none; }
   .lst li{ position:relative; padding-left:14px; white-space:pre-line; }
   .lst li + li{ margin-top:5px; }
-  .lst li::before{ content:""; position:absolute; left:0; top:.62em; width:7px; height:7px; background:var(--k); }
+  .lst li::before{ content:""; position:absolute; left:0; top:calc(.775em - 3.5px); width:7px; height:7px; background:var(--k); }
   .lead{ font-weight:800; font-size:14px; margin:0 0 8px; }
   .sub{ white-space:pre-line; margin:0 0 12px; font-size:12px; }
   .pair{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -141,7 +145,12 @@
   html.narrow .ov{ padding:14px; justify-content:flex-start; }
   html.narrow .cp{ max-width:calc(var(--sw, 100vw) - 28px); }
   html.narrow .cp-ttl b{ font-size:18px; }
-  html.narrow .pair{ grid-template-columns:1fr; }
+  html.narrow .pair{ gap:8px; }
+  html.narrow .pc{ padding:6px; }
+  html.narrow .pc .n{ font-size:14px; margin-top:8px; }
+  html.narrow .pc .kr{ font-size:11px; margin-bottom:6px; }
+  html.narrow .pc .rows{ font-size:10px; gap:2px 6px; }
+  html.narrow .pc .rows dt{ font-size:9px; }
 </style>
 </head>
 <body>
@@ -448,6 +457,11 @@ function openPop(k){
   $('#cpCap').textContent = d.cap; $('#cpName').textContent = d.name; $('#cpSub').textContent = d.sub || '';
   $('#cpBd').innerHTML = d.blocks.map(blockHtml).join('');
   $('#cpBd').scrollTop = 0;
+  if (document.documentElement.classList.contains('embed')){
+    const pn = panels.find(x => x.dataset.k === k), sr = screenEl.getBoundingClientRect();
+    const top = pn ? pn.getBoundingClientRect().top - sr.top - 10 : 24;
+    ov.style.setProperty('--cp-top', Math.max(14, Math.round(top)) + 'px');
+  }
   ov.classList.add('on');
   hideBub(); panels.forEach(p => p.classList.remove('on'));
 }
