@@ -572,28 +572,35 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); 
 
 $('#nb').addEventListener('click', () => openPop('nb'));
 
-/* ═════════ BGM — 처음 누를 때 YouTube 를 숨은 iframe 으로 띄워 재생(luvinfo 사이트 BGM 과 같은 방식), 이후엔 postMessage 로 재생·정지 ═════════ */
+/* ═════════ BGM — 열리자마자 YouTube 를 숨은 iframe 으로 띄워 자동 재생(luvinfo 사이트 BGM 과 같은 방식).
+   브라우저가 소리 자동 재생을 막으면, 페이지 어디든 처음 누르는 순간 재생. 이후엔 postMessage 로 재생·정지 ═════════ */
 const bgmEl = $('#bgm');
-let yt = null;
+let yt = null, bgmWant = true;     /* 사용자가 직접 멈추기 전까지 재생이 기본 */
 const ytSend = o => yt && yt.contentWindow && yt.contentWindow.postMessage(JSON.stringify(o), '*');
 function bgmUi(on){ bgmEl.classList.toggle('on', on); $('#bgmPl').setAttribute('aria-label', on ? 'pause' : 'play'); }
+function bgmLoad(){
+  yt = document.createElement('iframe');
+  yt.className = 'bgm-yt'; yt.title = 'BGM'; yt.allow = 'autoplay; encrypted-media';
+  yt.src = `https://www.youtube.com/embed/${BGM.yt}?autoplay=1&playsinline=1&enablejsapi=1&loop=1&playlist=${BGM.yt}&origin=${encodeURIComponent(location.origin)}`;
+  yt.onload = () => ytSend({ event:'listening', id:'bgm', channel:'widget' });
+  document.body.appendChild(yt);
+}
+bgmLoad();
+/* 자동 재생이 막혔을 때: 첫 조작(클릭·터치·키)에 재생 */
+function bgmKick(){
+  ['pointerdown', 'keydown'].forEach(t => document.removeEventListener(t, bgmKick, true));
+  if (bgmWant) ytSend({ event:'command', func:'playVideo', args:[] });   /* 이미 재생 중이면 아무 일 없음 */
+}
+['pointerdown', 'keydown'].forEach(t => document.addEventListener(t, bgmKick, true));
 $('#bgmPl').addEventListener('click', () => {
-  if (!yt){
-    yt = document.createElement('iframe');
-    yt.className = 'bgm-yt'; yt.title = 'BGM'; yt.allow = 'autoplay; encrypted-media';
-    yt.src = `https://www.youtube.com/embed/${BGM.yt}?autoplay=1&playsinline=1&enablejsapi=1&loop=1&playlist=${BGM.yt}&origin=${encodeURIComponent(location.origin)}`;
-    yt.onload = () => ytSend({ event:'listening', id:'bgm', channel:'widget' });
-    document.body.appendChild(yt);
-    bgmUi(true); return;
-  }
-  const on = !bgmEl.classList.contains('on');
-  ytSend({ event:'command', func:on ? 'playVideo' : 'pauseVideo', args:[] }); bgmUi(on);
+  bgmWant = !bgmEl.classList.contains('on');
+  ytSend({ event:'command', func:bgmWant ? 'playVideo' : 'pauseVideo', args:[] }); bgmUi(bgmWant);
 });
 window.addEventListener('message', e => {
   if (!yt || e.source !== yt.contentWindow) return;
   let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
   const inf = d && d.info; if (!inf || typeof inf !== 'object') return;
-  if (typeof inf.playerState === 'number' && inf.playerState !== -1) bgmUi(inf.playerState === 1 || inf.playerState === 3);
+  if (typeof inf.playerState === 'number') bgmUi(inf.playerState === 1 || inf.playerState === 3);   /* 자동 재생이 막히면 3(로딩) → -1 로 돌아옴 */
 });
 
 const q = new URLSearchParams(location.search);
