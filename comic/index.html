@@ -145,6 +145,13 @@
   .rows dd{ margin:0; white-space:pre-line; }
   .rows.sm{ font-size:12px; gap:3px 12px; }
   .rows.sm dt{ font-size:11px; font-weight:700; }
+  .rows [hidden]{ display:none; }
+  .rows mark{ background:var(--k); color:var(--w); padding:0 1px; }
+  .srch{ display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; margin:0 0 12px; border:2px solid var(--k); background:var(--w); }
+  .srch svg{ flex:none; width:14px; height:14px; fill:none; stroke:var(--k); stroke-width:2.4; stroke-linecap:round; }
+  .srch input{ flex:1; min-width:0; height:100%; padding:0; border:0; border-radius:0; outline:0; background:none; color:var(--k); font:inherit; font-size:13px; font-weight:600; -webkit-appearance:none; appearance:none; }
+  .srch input::-webkit-search-cancel-button{ -webkit-appearance:none; }
+  .srch-no{ margin:0; font-size:12px; font-weight:700; }
   .lst{ margin:0; padding:0; list-style:none; }
   .lst li{ position:relative; padding-left:14px; white-space:pre-line; }
   .lst li + li{ margin-top:5px; }
@@ -177,6 +184,7 @@
   html.narrow .cp{ max-width:calc(var(--sw, 100vw) - 28px); }
   html.narrow .cp-ttl b{ font-size:18px; }
   html.narrow .pair{ gap:8px; }
+  html.narrow .srch input{ font-size:16px; }   /* iOS: 16px 미만이면 포커스 때 화면 확대 */
   html.narrow .pc{ padding:6px; }
   html.narrow .pc .n{ font-size:14px; margin-top:8px; }
   html.narrow .pc .kr{ font-size:11px; margin-bottom:6px; }
@@ -300,25 +308,27 @@ const DATA = {
     cap:'④ LIST', name:'배려 리스트', sub:'EXCLUSION',
     blocks:[
       { sub:'타임라인 내 1T1~2D 유지를 목적으로, 하기 캐릭터를 메인으로 하시는 분은 더이상 찾아뵙지 않고 있습니다.' },
-      { sm:true, rows:[
-        ['@cherrymango','Dr. 밴스, 바이브, 블루, 산타, 에덴, 아모레, 윈터, 이카로스, 저스티스, 퓨어, 해일, 헬리오스, 휴고'],
-        ['@drake_4bko5xtfte','바이스, 오닉스'],
-        ['@eung9','다이브, 도브, 러브, 록시, 임페리얼, 제스테, 지젤, 타이탄, 하츠, K'],
-        ['@junichu','하율'],
+      { sm:true, search:true, rows:[
+        ['@cherrymango','Dr. 밴스, 바이브, 블루, 산타, 에덴, 윈터, 이카로스, 퓨어, 해일, 헬리오스, 휴고'],
+        ['@DOGPIG','바이스, 오닉스'],
+        ['@eung9','다이브, 도브, 러브, 록시, 임페리얼, 제스테, 지젤, 타이탄, K'],
+        ['@GabuU_y','에토레, 오스카'],
+        ['@Ko2','베이퍼'],
         ['@Meom_Meo','아르비테르, 에단, 키츠네, 파놉테스, 헌터'],
         ['@meowmoon','단테, 마티스'],
-        ['@MIYAMAN &\n@Toyoman','넵튠, 디비언트, 아르카나, 오비탈, 에테르, 이브, 카니발, 캐리온'],
-        ['@ohnyu','고유빈, 지한울, 차재현, 토시유키'],
-        ['@PPqq','빈센트 리드'],
-        ['@qwerty','4, 9'],
+        ['@MIYAMAN &\n@Toyoman','넵튠, 디비언트, 아르카나, 에테르, 오비탈, 이브, 카니발, 캐리온'],
+        ['@ohnyu','고유빈, 지한울, 차재현'],
+        ['@qwerty','4, 7, 9, Oz'],
+        ['@RidG','이스마엘'],
+        ['@Room7','하인츠'],
         ['@seita','싱클레어, 윤'],
         ['@Sizz','기재언, 우재경'],
-        ['@smoke_nonsmoker','건전한닉네임28, 고양이어디세요, 냐냐냥, 빠삐코'],
+        ['@smoke_nonsmoker','고양이어디세요, 냐냐냥, 빠삐코'],
         ['@_summer','시릴'],
         ['@surfboard','요한'],
-        ['@YYG','로렌조, 나초'],
+        ['@YYG','나초'],
         ['@208x195','구일오, 바나비, 이승열'],
-        ['...','강도영, 닐, 레나토, 백호준, 할파스'],
+        ['...','닐, 빈센트 리드, 할파스, 헬렐, 호준'],
       ] },
     ],
   },
@@ -491,16 +501,43 @@ function blockHtml(b){
   if (b.h) h += `<h4>${esc(b.h)}</h4>`;
   if (b.sub) h += `<p class="sub">${br(b.sub)}</p>`;
   if (b.lead) h += `<p class="lead">${esc(b.lead)}</p>`;
+  if (b.search) h += `<label class="srch"><svg viewBox="0 0 16 16"><circle cx="6.8" cy="6.8" r="4.8"/><path d="M10.4 10.4 14.5 14.5"/></svg><input type="search" placeholder="검색" autocomplete="off" spellcheck="false"></label>`;
   if (b.rows) h += rowsHtml(b.rows, b.sm);
+  if (b.search) h += `<p class="srch-no" hidden>검색 결과 없음</p>`;
   if (b.list) h += `<ul class="lst">${b.list.map(x => `<li>${br(x)}</li>`).join('')}</ul>`;
   if (b.pair) h += `<div class="pair">${b.pair.map(c => `<div class="pc"><img src="${c.img}" alt=""><div class="n">${esc(c.n)}</div><div class="kr">${esc(c.kr)}</div>${rowsHtml(c.rows)}</div>`).join('')}</div>`;
   return h + '</div>';
+}
+/* 검색: 계정·캐릭터 이름 어디든 들어 있으면 남기고, 맞은 글자는 검게 표시 */
+function wireSearch(inp, rows){
+  const blk = inp.closest('.blk'), dts = blk.querySelectorAll('.rows dt'), dds = blk.querySelectorAll('.rows dd'), no = blk.querySelector('.srch-no');
+  const hl = (s, q) => {
+    if (!q) return br(s);
+    const lo = s.toLowerCase(); let out = '', i = 0, j;
+    while ((j = lo.indexOf(q, i)) > -1){ out += br(s.slice(i, j)) + `<mark>${br(s.slice(j, j + q.length))}</mark>`; i = j + q.length; }
+    return out + br(s.slice(i));
+  };
+  inp.addEventListener('input', () => {
+    const cp = inp.closest('.cp'), dl = blk.querySelector('.rows');
+    if (!cp.style.minHeight){   /* 걸러져도 팝업 크기·계정 열 폭 유지(들썩이지 않게) */
+      cp.style.minHeight = cp.offsetHeight + 'px';
+      dl.style.gridTemplateColumns = getComputedStyle(dl).gridTemplateColumns.split(' ')[0] + ' 1fr';
+    }
+    const q = inp.value.trim().toLowerCase(); let n = 0;
+    rows.forEach(([k, v], i) => {
+      const hit = !q || (k + '\n' + v).toLowerCase().includes(q);
+      dts[i].hidden = dds[i].hidden = !hit; if (hit) n++;
+      dts[i].innerHTML = hl(k, q); dds[i].innerHTML = hl(v, q);
+    });
+    no.hidden = n > 0;
+  });
 }
 function openPop(k){
   const d = DATA[k];
   $('#cpCap').textContent = d.cap; $('#cpCap').style.display = d.cap ? '' : 'none'; ov.classList.toggle('slot', !!d.slot); $('#cpName').textContent = d.name; $('#cpSub').textContent = d.sub || '';
   $('#cpBd').innerHTML = d.blocks.map(blockHtml).join('');
-  $('#cpBd').scrollTop = 0;
+  $('#cpBd').scrollTop = 0; ov.querySelector('.cp').style.minHeight = '';
+  $('#cpBd').querySelectorAll('.srch input').forEach((inp, i) => wireSearch(inp, d.blocks.filter(b => b.search)[i].rows));
   if (document.documentElement.classList.contains('embed')){
     /* 폴백: 누른 칸 위치 */
     const pn = panels.find(x => x.dataset.k === k) || $('#nb'), sr = screenEl.getBoundingClientRect();
