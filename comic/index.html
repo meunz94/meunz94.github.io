@@ -28,13 +28,12 @@
   html.embed, html.embed body{ height:auto; overflow:visible; }
   html.embed .screen{ position:relative; inset:auto; min-height:calc(var(--li-vh) * 100); }
 
-  /* ───────── 4칸 보드 ───────── */
   .stage{
     width:min(640px, 92%, calc((100vh - 176px) * 1.5));
     max-width:100%;
     display:flex; flex-direction:column; gap:14px;
   }
-  html.embed .stage{ width:min(640px, 92%, calc((var(--li-vh) * 100 - 176px) * 1.5)); }   /* 프레임이 vh 를 전부 var(--li-vh) 로 바꾸므로 폴백에 vh 쓰면 자기참조로 무효됨 */
+  html.embed .stage{ width:min(640px, 92%, calc((var(--li-vh) * 100 - 176px) * 1.5)); }
   .board{
     --gap:14px;
     width:100%;
@@ -54,7 +53,7 @@
   .pn[data-k="list"]  { grid-area:2 / 2 / 3 / 3; }
 
   .pn .ht, .pn .orig{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-  .pn .orig{ max-width:none; max-height:none; }   /* luvinfo 프레임이 img 에 max-width:100% 를 강제 → 확대(zoom) 이미지가 잘려 한쪽으로 쏠림 */
+  .pn .orig{ max-width:none; max-height:none; }
   .pn .orig{ object-fit:cover; opacity:0; filter:grayscale(1) contrast(.95); transition:opacity .22s ease; }
   .pn .ht{ opacity:1; transition:opacity .22s ease; }
   .pn.on .ht{ opacity:0; }
@@ -65,7 +64,6 @@
     background:var(--w); border:var(--ln) solid var(--k); padding:6px 10px 5px;
   }
 
-  /* ───────── 윗줄: BGM(나레이션 박스) · 이웃집(말풍선) ───────── */
   .top{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3, 1fr); gap:0 14px; align-items:center; height:44px; }
   .bgm{ grid-column:1 / 3; justify-self:start; display:flex; align-items:center; gap:8px; }
   .bgm-pl{ flex:none; width:30px; height:30px; border:var(--ln) solid var(--k); border-radius:50%; background:var(--w); display:grid; place-items:center; -webkit-tap-highlight-color:transparent; }
@@ -75,7 +73,6 @@
   .bgm-pl:hover{ background:var(--k); } .bgm-pl:hover svg{ fill:var(--w); }
   .bgm-tag{ display:flex; align-items:center; height:30px; padding:0 10px; background:var(--k); color:var(--w); font-weight:800; font-size:12px; letter-spacing:.06em; }
   .bgm-yt{ position:absolute; width:1px; height:1px; left:-9px; top:0; opacity:0; pointer-events:none; border:0; }
-  /* 이웃집 = 뭉게뭉게 생각 풍선 + 아래로 작은 동그라미 두 개 */
   .nb{
     grid-column:3; justify-self:center; position:relative; width:140px; height:44px;
     font-weight:800; font-size:13px; letter-spacing:.05em; white-space:nowrap; -webkit-tap-highlight-color:transparent;
@@ -85,14 +82,13 @@
   .nb span{ position:relative; }
   .nb:hover, .nb:focus-visible{ color:var(--w); outline:none; } .nb:hover svg *, .nb:focus-visible svg *{ fill:var(--k); }
 
-  /* ───────── 말풍선(호버) ───────── */
   .bub-svg{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; display:none; }
   .bub-svg.on{ display:block; }
-  .bub-svg .bs path{ fill:var(--w); stroke:var(--k); stroke-width:calc(var(--ln) * 2); }   /* 몸통(테두리) — 면 레이어가 안쪽 절반을 가리므로 2배 */
-  .bub-svg .bf path{ fill:var(--w); stroke:none; }                                /* 몸통(면) — 겹친 테두리 가림 */
+  .bub-svg .bs path{ fill:var(--w); stroke:var(--k); stroke-width:calc(var(--ln) * 2); }
+  .bub-svg .bf path{ fill:var(--w); stroke:none; }
   .bub-svg .tf{ fill:var(--w); stroke:none; }
   .bub-svg .tl{ fill:none; stroke:var(--k); stroke-width:var(--ln); stroke-linejoin:miter; stroke-linecap:butt; }
-  .bub-svg .bx{ fill:var(--w); stroke:var(--k); stroke-width:var(--ln); }        /* 나레이션 박스 */
+  .bub-svg .bx{ fill:var(--w); stroke:var(--k); stroke-width:var(--ln); }
   .bub-txts{ position:fixed; inset:0; z-index:6; pointer-events:none; }
   .bub-t{
     position:absolute; width:-webkit-max-content; width:max-content; max-width:none; white-space:pre-line; text-align:center; transform:translate(-50%,-50%);
@@ -100,7 +96,6 @@
   }
   html.embed .bub-svg, html.embed .bub-txts{ position:absolute; }
 
-  /* ───────── 만화책 팝업(클릭) ───────── */
   .ov{
     position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:24px;
     background:
@@ -108,8 +103,6 @@
       rgba(255,255,255,.72);
   }
   .ov.on{ display:flex; }
-  /* 프레임 안: fixed 가 absolute 로 바뀌고 vh 가 부모 창 높이로 수시로 바뀜(모바일 주소창) → flex 가운데 정렬하면 팝업이 화면 밖으로 밀려 도트만 남음.
-     그래서 열 때 한 번, 부모 창에 실제로 보이는 구간(IntersectionObserver)의 가운데를 재서 --cp-top 으로 고정하고, 길면 페이지가 같이 늘어나게 함 */
   html.embed .ov{ position:absolute; inset:auto; top:0; left:0; right:0; min-height:100%; align-items:flex-start; }
   html.embed .cp{ max-height:none; margin-top:var(--cp-top, 24px); }
   html.embed .ov.wait .cp{ visibility:hidden; }
@@ -155,7 +148,7 @@
   .lst{ margin:0; padding:0; list-style:none; }
   .lst li{ position:relative; padding-left:14px; white-space:pre-line; }
   .lst li + li{ margin-top:5px; }
-  .lst .nt{ color:#8a8a8a; }   /* └ · ㄴ 로 시작하는 부가 설명 줄 */
+  .lst .nt{ color:#8a8a8a; }
   .lst li::before{ content:""; position:absolute; left:0; top:calc(.775em - 3.5px); width:7px; height:7px; background:var(--k); }
   .lead{ font-weight:800; font-size:14px; margin:0 0 8px; }
   .sub{ white-space:pre-line; margin:0 0 12px; font-size:12px; }
@@ -167,8 +160,6 @@
   .pc .rows{ font-size:11px; gap:2px 8px; }
   .pc .rows dt{ font-size:10px; }
 
-  /* ───────── 좁은 화면: 2열, PAIR 가로로 NOTICE 아래 ─────────
-     html.narrow 는 head 스크립트가 min(기기 화면 폭, 문서 폭) <= 640 일 때 붙임 (iframe 이 폰보다 넓어도 동작) */
   html.narrow, html.narrow body{ height:auto; overflow:auto; }
   html.narrow .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; }
   html.narrow .stage{ width:min(92%, 520px, calc(var(--sw, 100vw) * .92)); gap:12px; }
@@ -185,7 +176,7 @@
   html.narrow .cp{ max-width:calc(var(--sw, 100vw) - 28px); }
   html.narrow .cp-ttl b{ font-size:18px; }
   html.narrow .pair{ gap:8px; }
-  html.narrow .srch input{ font-size:16px; }   /* iOS: 16px 미만이면 포커스 때 화면 확대 */
+  html.narrow .srch input{ font-size:16px; }
   html.narrow .pc{ padding:6px; }
   html.narrow .pc .n{ font-size:14px; margin-top:8px; }
   html.narrow .pc .kr{ font-size:11px; margin-bottom:6px; }
@@ -223,25 +214,19 @@
         <button class="cp-x" id="cpX" aria-label="close">×</button>
       </div>
       <div class="cp-bd" id="cpBd"></div>
-      <div class="cp-slot"><div data-li-slot="bn"></div></div>   <!-- luvinfo 가 이 자리에 사이트의 첫 번째 배너 블록을 겹쳐 그림 -->
+      <div class="cp-slot"><div data-li-slot="bn"></div></div>
     </div>
   </div>
 </section>
 
 <script>
-/* ═════════ 데이터 (luvinfo-garden.html 에서 옮김, 꼬들 제외) ═════════ */
-/* src: 배포 시 https 주소로 교체 / zoom: 확대 배율 / fx,fy: 초점(0~1, 이미지 기준) */
 const IMG = {
   notice:{ src:'https://vance.love/comic/img/notice.jpg' },
   pair:  { src:'https://vance.love/comic/img/pair.jpg', zoom:1.5, fx:.52, fy:.24, narrow:{ zoom:1.15, fx:.5, fy:.2 } },
   ng:    { src:'https://vance.love/comic/img/ng.jpg' },
   list:  { src:'https://vance.love/comic/img/list.jpg' },
 };
-/* BGM: YouTube 영상 ID */
 const BGM = { yt:'h353ta0r9v0' };
-/* 말풍선: 칸마다 parts 배열. ax,ay = 칸 안 기준점(0~1, 바깥으로 삐져나가도 됨)
-   t = 문구 / tail = 꼬리 방향(도, 0=오른쪽, 시계방향; 없으면 꼬리 없음) / shape:'round' = 작은 원 / ratio = 높이/너비(기본 .78, 1이면 동그랗게) / pad = 글자가 차지하는 비율(기본 .7, 크면 풍선이 작아짐) / vf = 세로 글자 비율 / fs = 글자 px
-   box:true = 나레이션 네모 박스(칸 안에 가둠). 겹치는 풍선은 테두리가 합쳐져 한 덩어리로 보임. */
 const BUB = {
   notice:{ parts:[
       { t:'알려드릴게요.',   ax:.12, ay:.60, ratio:1, pad:.68 },
@@ -253,7 +238,7 @@ const BUB = {
       { t:'나에 대해...',    ax:.58, ay:1.08, ratio:1, pad:.68, tail:-140 },
     ] } },
   pair:  { parts:[
-      { t:'변연은 진짜\n유명한 변연임', ax:.12, ay:.62, pad:.6, tail:-35 },   /* 블랑 얼굴(0.26~0.5) 바로 아래 */
+      { t:'변연은 진짜\n유명한 변연임', ax:.12, ay:.62, pad:.6, tail:-35 },
     ], narrow:{ parts:[
       { t:'변연은 진짜\n유명한 변연임', ax:.1, ay:1.0, pad:.6, tail:-45 },
     ] } },
@@ -265,7 +250,7 @@ const IMG_A = 'https://firebasestorage.googleapis.com/v0/b/lovelog-cc579.firebas
 const IMG_B = 'https://firebasestorage.googleapis.com/v0/b/lovelog-cc579.firebasestorage.app/o/tsites%2Fvance%2F1789014336643_blanc2.jpg?alt=media&token=e5c3c39a-2691-43ac-8272-eeab5982a7f1';
 
 const DATA = {
-  nb: { cap:'', name:'이웃집', slot:true, blocks:[] },   /* 배너는 luvinfo 배너 블록이 그려 줌 */
+  nb: { cap:'', name:'이웃집', slot:true, blocks:[] },
   notice: {
     cap:'① NOTICE', name:'연짱', sub:'@L1MB1CSYST3M',
     blocks:[
@@ -335,7 +320,6 @@ const DATA = {
   },
 };
 
-/* ═════════ 하프톤(망점) 변환 ═════════ */
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -347,7 +331,7 @@ function halftone(cv, img, cfg){
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   const ctx = cv.getContext('2d');
-  const cell = 4.2 * dpr;                           /* 망점 간격 */
+  const cell = 4.2 * dpr;
   const cols = Math.ceil(cv.width / cell) + 1, rows = Math.ceil(cv.height / cell) + 1;
   const off = document.createElement('canvas'); off.width = cols; off.height = rows;
   const o = off.getContext('2d');
@@ -366,7 +350,7 @@ function halftone(cv, img, cfg){
     for (let x = 0; x < cols; x++){
       const i = (y * cols + x) * 4;
       let l = (d[i] * .299 + d[i+1] * .587 + d[i+2] * .114) / 255;
-      l = Math.min(1, Math.max(0, (l - .5) * 1.35 + .5));    /* 대비 */
+      l = Math.min(1, Math.max(0, (l - .5) * 1.35 + .5));
       const r = (1 - l) * rMax;
       if (r < .35) continue;
       const cx = x * cell + stag, cy = y * cell;
@@ -399,7 +383,6 @@ panels.forEach(p => {
 });
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => panels.forEach(applyImg), 120); });
 
-/* ═════════ 말풍선 ═════════ */
 const bubSvg = $('#bubSvg'), gStroke = bubSvg.querySelector('.bs'), gFill = bubSvg.querySelector('.bf'),
       tailFill = bubSvg.querySelector('.tf'), tailLine = bubSvg.querySelector('.tl'), gBox = bubSvg.querySelector('.bxg'),
       bubTxts = $('#bubTxts');
@@ -411,7 +394,6 @@ function rrPath(bx, by, hw, hh, rr){
   const w = hw * 2, h = hh * 2;
   return `M${bx - hw + rr},${by - hh} h${w - 2 * rr} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - 2 * rr} a${rr},${rr} 0 0 1 ${-rr},${rr} h${-(w - 2 * rr)} a${rr},${rr} 0 0 1 ${-rr},${-rr} v${-(h - 2 * rr)} a${rr},${rr} 0 0 1 ${rr},${-rr} z`;
 }
-/* 중심에서 각도 a 방향으로 나간 둥근 네모 가장자리 점 */
 function rrPoint(hw, hh, r, a){
   const dx = Math.cos(a), dy = Math.sin(a);
   let t = Math.min(Math.abs(dx) > 1e-6 ? hw / Math.abs(dx) : 1e9, Math.abs(dy) > 1e-6 ? hh / Math.abs(dy) : 1e9);
@@ -425,17 +407,17 @@ function rrPoint(hw, hh, r, a){
 }
 function tailPaths(b, deg){
   const { bx, by, hw, hh, r } = b;
-  const a = deg * Math.PI / 180, len = 17, base = 5.5;   /* 꼬리 길이·밑변 반폭 */
+  const a = deg * Math.PI / 180, len = 17, base = 5.5;
   const [ex, ey, et] = rrPoint(hw, hh, r, a);
   const da = base / et;
   const [x1, y1] = rrPoint(hw, hh, r, a - da), [x2, y2] = rrPoint(hw, hh, r, a + da);
   const cosA = Math.cos(a), sinA = Math.sin(a);
   const p1 = [bx + x1, by + y1], p2 = [bx + x2, by + y2];
   const tip = [bx + ex + len * cosA, by + ey + len * sinA];
-  const nx = -sinA * 3, ny = cosA * 3;                                  /* 살짝 휘는 방향 */
+  const nx = -sinA * 3, ny = cosA * 3;
   const c1 = [(p1[0] + tip[0]) / 2 + nx, (p1[1] + tip[1]) / 2 + ny];
   const c2 = [(p2[0] + tip[0]) / 2 + nx, (p2[1] + tip[1]) / 2 + ny];
-  const i1 = [p1[0] - cosA * 3, p1[1] - sinA * 3], i2 = [p2[0] - cosA * 3, p2[1] - sinA * 3];  /* 몸통 안쪽으로 */
+  const i1 = [p1[0] - cosA * 3, p1[1] - sinA * 3], i2 = [p2[0] - cosA * 3, p2[1] - sinA * 3];
   const curve = `Q${c1[0]},${c1[1]} ${tip[0]},${tip[1]} Q${c2[0]},${c2[1]} ${p2[0]},${p2[1]}`;
   return [`M${i1[0]},${i1[1]} L${p1[0]},${p1[1]} ${curve} L${i2[0]},${i2[1]} Z`, `M${p1[0]},${p1[1]} ${curve}`];
 }
@@ -448,13 +430,12 @@ function showBub(p){
   cfg.parts.forEach(part => {
     const d = document.createElement('div');
     d.className = 'bub-t' + (part.box ? ' box' : ''); d.textContent = part.t; if (part.fs) d.style.fontSize = part.fs + 'px';
-    if (!/\n/.test(part.t)) d.style.whiteSpace = 'nowrap';            /* 줄바꿈 표시 없는 문구는 절대 안 접힘 */
+    if (!/\n/.test(part.t)) d.style.whiteSpace = 'nowrap';
     bubTxts.appendChild(d);
     const tw = d.offsetWidth, th = d.offsetHeight;
     let bx = pl + r.width * part.ax, by = pt + r.height * part.ay;
     if (part.box){
-      /* 나레이션 박스: 칸 안에 가둠, 넘치면 글자 줄바꿈 */
-      const w = Math.min(tw + 44, r.width - 16);                       /* 글자 사방 여백 넉넉히 */
+      const w = Math.min(tw + 44, r.width - 16);
       d.style.width = (w - 36) + 'px'; d.style.whiteSpace = 'pre-wrap'; d.style.wordBreak = 'keep-all';
       const h = d.offsetHeight + 30;
       bx = Math.min(Math.max(bx, pl + 8 + w / 2), pl + r.width - 8 - w / 2);
@@ -467,7 +448,7 @@ function showBub(p){
       const dpath = rrPath(bx, by, hw, hh, rr);
       gStroke.appendChild(SVG('path', { d:dpath }));
       gFill.appendChild(SVG('path', { d:dpath }));
-      if (part.tail != null){ const [f, l] = tailPaths({ bx, by, hw:hw + 1, hh:hh + 1, r:rr + 1 }, part.tail);   /* 보이는 테두리 중심(가장자리+1px)에 맞춤 */ tailFill.setAttribute('d', f); tailLine.setAttribute('d', l); }
+      if (part.tail != null){ const [f, l] = tailPaths({ bx, by, hw:hw + 1, hh:hh + 1, r:rr + 1 }, part.tail); tailFill.setAttribute('d', f); tailLine.setAttribute('d', l); }
     }
     d.style.left = bx + 'px'; d.style.top = by + 'px';
   });
@@ -485,7 +466,6 @@ panels.forEach(p => {
   p.addEventListener('mouseleave', () => { if (NOHOVER.matches) return; p.classList.remove('on'); hideBub(); });
   p.addEventListener('click', () => {
     if (!NOHOVER.matches) { openPop(p.dataset.k); return; }
-    /* 터치: 말풍선 + 흑백 전환을 먼저 보여주고 잠시 뒤 팝업 */
     clearTimeout(tapTimer);
     panels.forEach(x => x.classList.remove('on'));
     p.classList.add('on'); showBub(p);
@@ -493,11 +473,9 @@ panels.forEach(p => {
   });
 });
 
-/* ═════════ 만화책 팝업 ═════════ */
 const ov = $('#ov');
 const br = s => esc(s).replace(/\n/g, '<br>');
 function rowsHtml(rows, sm){ return `<dl class="rows${sm ? ' sm' : ''}">${rows.map(([k, v]) => `<dt>${br(k)}</dt><dd>${br(v)}</dd>`).join('')}</dl>`; }
-/* 목록 한 줄: **굵게**, └ · ㄴ 로 시작하는 줄은 회색 부가 설명 */
 const liHtml = s => s.split('\n').map(l => { const t = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^[└ㄴ]/.test(l) ? `<span class="nt">${t}</span>` : t; }).join('<br>');
 function blockHtml(b){
   let h = '<div class="blk">';
@@ -511,7 +489,6 @@ function blockHtml(b){
   if (b.pair) h += `<div class="pair">${b.pair.map(c => `<div class="pc"><img src="${c.img}" alt=""><div class="n">${esc(c.n)}</div><div class="kr">${esc(c.kr)}</div>${rowsHtml(c.rows)}</div>`).join('')}</div>`;
   return h + '</div>';
 }
-/* 검색: 계정·캐릭터 이름 어디든 들어 있으면 남기고, 맞은 글자는 검게 표시 */
 function wireSearch(inp, rows){
   const blk = inp.closest('.blk'), dts = blk.querySelectorAll('.rows dt'), dds = blk.querySelectorAll('.rows dd'), no = blk.querySelector('.srch-no');
   const hl = (s, q) => {
@@ -522,7 +499,7 @@ function wireSearch(inp, rows){
   };
   inp.addEventListener('input', () => {
     const cp = inp.closest('.cp'), dl = blk.querySelector('.rows');
-    if (!cp.style.minHeight){   /* 걸러져도 팝업 크기·계정 열 폭 유지(들썩이지 않게) */
+    if (!cp.style.minHeight){
       cp.style.minHeight = cp.offsetHeight + 'px';
       dl.style.gridTemplateColumns = getComputedStyle(dl).gridTemplateColumns.split(' ')[0] + ' 1fr';
     }
@@ -542,7 +519,6 @@ function openPop(k){
   $('#cpBd').scrollTop = 0; ov.querySelector('.cp').style.minHeight = '';
   $('#cpBd').querySelectorAll('.srch input').forEach((inp, i) => wireSearch(inp, d.blocks.filter(b => b.search)[i].rows));
   if (document.documentElement.classList.contains('embed')){
-    /* 폴백: 누른 칸 위치 */
     const pn = panels.find(x => x.dataset.k === k) || $('#nb'), sr = screenEl.getBoundingClientRect();
     const top = pn ? pn.getBoundingClientRect().top - sr.top - 10 : 24;
     ov.style.setProperty('--cp-top', Math.max(14, Math.round(top)) + 'px');
@@ -553,7 +529,7 @@ function openPop(k){
         io.disconnect(); clearTimeout(t);
         const vis = en.intersectionRect, cp = ov.querySelector('.cp');
         if (vis.height > 40){
-          const h = cp.offsetHeight, y = vis.top - en.boundingClientRect.top - parseFloat(getComputedStyle(ov).paddingTop);   /* 보이는 구간의 .screen 기준 위치(.ov 안쪽 여백 빼고) */
+          const h = cp.offsetHeight, y = vis.top - en.boundingClientRect.top - parseFloat(getComputedStyle(ov).paddingTop);
           ov.style.setProperty('--cp-top', Math.round(Math.max(0, y + Math.max(14, (vis.height - h) / 2))) + 'px');
         }
         done();
@@ -572,10 +548,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); 
 
 $('#nb').addEventListener('click', () => openPop('nb'));
 
-/* ═════════ BGM — 열리자마자 YouTube 를 숨은 iframe 으로 띄워 자동 재생(luvinfo 사이트 BGM 과 같은 방식).
-   브라우저가 소리 자동 재생을 막으면, 페이지 어디든 처음 누르는 순간 재생. 이후엔 postMessage 로 재생·정지 ═════════ */
 const bgmEl = $('#bgm');
-let yt = null, bgmWant = true;     /* 사용자가 직접 멈추기 전까지 재생이 기본 */
+let yt = null, bgmWant = true;
 const ytSend = o => yt && yt.contentWindow && yt.contentWindow.postMessage(JSON.stringify(o), '*');
 function bgmUi(on){ bgmEl.classList.toggle('on', on); $('#bgmPl').setAttribute('aria-label', on ? 'pause' : 'play'); }
 function bgmLoad(){
@@ -586,10 +560,9 @@ function bgmLoad(){
   document.body.appendChild(yt);
 }
 bgmLoad();
-/* 자동 재생이 막혔을 때: 첫 조작(클릭·터치·키)에 재생 */
 function bgmKick(){
   ['pointerdown', 'keydown'].forEach(t => document.removeEventListener(t, bgmKick, true));
-  if (bgmWant) ytSend({ event:'command', func:'playVideo', args:[] });   /* 이미 재생 중이면 아무 일 없음 */
+  if (bgmWant) ytSend({ event:'command', func:'playVideo', args:[] });
 }
 ['pointerdown', 'keydown'].forEach(t => document.addEventListener(t, bgmKick, true));
 $('#bgmPl').addEventListener('click', () => {
@@ -600,11 +573,10 @@ window.addEventListener('message', e => {
   if (!yt || e.source !== yt.contentWindow) return;
   let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
   const inf = d && d.info; if (!inf || typeof inf !== 'object') return;
-  if (typeof inf.playerState === 'number') bgmUi(inf.playerState === 1 || inf.playerState === 3);   /* 자동 재생이 막히면 3(로딩) → -1 로 돌아옴 */
+  if (typeof inf.playerState === 'number') bgmUi(inf.playerState === 1 || inf.playerState === 3);
 });
 
 const q = new URLSearchParams(location.search);
-/* 디버그: ?pop=notice|pair|ng|list  ?hover=notice|… (고정 커서로 호버 상태 재현) */
 if (q.get('hover')){ const p = panels.find(x => x.dataset.k === q.get('hover')); if (p) window.addEventListener('load', () => setTimeout(() => { const r = p.getBoundingClientRect(); p.classList.add('on'); showBub(p); }, 1500)); }
 if (q.get('pop') && DATA[q.get('pop')]) openPop(q.get('pop'));
 </script>
