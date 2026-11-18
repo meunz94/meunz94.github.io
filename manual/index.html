@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){ var h=document.documentElement; if(window.__LI||(window.parent&&window.parent!==window))h.classList.add('embed');
+  function nw(){ var sw=(screen&&screen.width)||1e4, iw=h.clientWidth||window.innerWidth||1e4;
+    var wrap=document.querySelector('.li-wrap')||document.querySelector('.screen'); var ww=wrap?wrap.getBoundingClientRect().width:1e4;
+    var w=Math.min(sw,iw,ww>0?ww:1e4); h.style.setProperty('--sw', w+'px'); h.classList.toggle('narrow', w<=540); }
+  nw(); window.addEventListener('resize', nw); window.addEventListener('DOMContentLoaded', nw); window.addEventListener('load', nw); window.__nw=nw; })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>연짱사용설명서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&display=swap">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --k:#000;
+    --w:#fff;
+    --ln:2px;
+    --kr:"Apple SD Gothic Neo","Pretendard","Helvetica Neue",Helvetica,Arial,sans-serif;
+    --en:"Archivo","Apple SD Gothic Neo","Pretendard","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:var(--w); color:var(--k); overflow:hidden; }
+  body{ font-family:var(--kr); -webkit-font-smoothing:antialiased; }
+  button{ font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+
+  .screen{ position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html.embed, html.embed body{ height:auto; overflow:visible; }
+  html.embed .screen{ position:relative; inset:auto; min-height:calc(var(--li-vh) * 100); }
+
+  .stage{
+    width:min(470px, 94%, calc((100vh - 64px) * 1.1524));
+    max-width:100%;
+    container-type:inline-size;
+  }
+  html.embed .stage{ width:min(470px, 94%, calc((var(--li-vh) * 100 - 64px) * 1.1524)); }
+  .bd{ --u:calc(100cqw / 930); position:relative; }
+
+  .ttl{
+    margin:0; height:calc(var(--u) * 179); padding:calc(var(--u) * 34) 0 0 calc(var(--u) * 8);
+    font-family:var(--en); font-weight:600; white-space:nowrap;
+  }
+  .ttl span{ display:block; }
+  .ttl .t1{ font-size:calc(var(--u) * 50); line-height:1.09; font-weight:700; }
+  .ttl .t2{ font-size:calc(var(--u) * 40); line-height:1.09; }
+
+  .row{ display:flex; gap:calc(var(--u) * 30); }
+  .row + .row{ margin-top:calc(var(--u) * 28); }
+
+  .cd{
+    position:relative; flex:none; display:block; height:calc(var(--u) * 300); text-align:left;
+    -webkit-tap-highlight-color:transparent; transition:transform .18s ease;
+  }
+  .cd::before{
+    content:""; position:absolute; inset:0; background:var(--w);
+    border:var(--ln) solid var(--k); border-radius:calc(var(--u) * 30);
+  }
+  .cd:hover, .cd:focus-visible{ transform:translateY(calc(var(--u) * -6)); outline:none; }
+  .c1{ width:calc(var(--u) * 300); }
+  .c2{ width:calc(var(--u) * 600); }
+  .c3{ width:calc(var(--u) * 370); }
+  .c4, .c5{ width:calc(var(--u) * 250); }
+
+  .cd img{ max-width:none; max-height:none; pointer-events:none; -webkit-user-drag:none; user-select:none; }
+  .no{
+    position:absolute; left:calc(var(--u) * var(--nx)); top:calc(var(--u) * var(--ny));
+    width:calc(var(--u) * 40); height:calc(var(--u) * 40); display:grid; place-items:center;
+  }
+  .no img{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .no b{ position:relative; font-family:var(--en); font-weight:700; font-size:calc(var(--u) * 30); line-height:1; color:var(--w); }
+  .tx{
+    position:absolute; left:calc(var(--u) * var(--nx)); bottom:calc(var(--u) * var(--tb));
+    font-weight:600; font-size:calc(var(--u) * 25); line-height:1.2; letter-spacing:calc(var(--u) * -.25); white-space:nowrap;
+  }
+  .lb{
+    position:absolute; top:calc(var(--u) * 40);
+    font-weight:800; font-size:calc(var(--u) * 20); line-height:1.2; letter-spacing:calc(var(--u) * -.2); white-space:nowrap;
+  }
+  .lb.me{ left:calc(var(--u) * 151); }
+  .lb.you{ left:calc(var(--u) * 244); }
+
+  .c1, .c3{ --nx:24; }
+  .c2{ --nx:28; }
+  .c4, .c5{ --nx:26; }
+  .c1, .c2{ --ny:24; --tb:21; --tt:223; }
+  .c3, .c4, .c5{ --ny:26; --tb:19; --tt:225; }
+
+  @supports (text-box: trim-both cap alphabetic){
+    .ttl{ padding-top:calc(var(--u) * 44); text-box:trim-both cap alphabetic; }
+    .no b{ text-box:trim-both cap alphabetic; }
+    .tx{ bottom:auto; top:calc(var(--u) * var(--tt)); text-box:trim-both cap alphabetic; }
+    .lb{ top:calc(var(--u) * 46); text-box:trim-both cap alphabetic; }
+  }
+
+  .im{ position:absolute; display:block; pointer-events:none; }
+  .im > img, .rot > img{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .c1 .im{ left:calc(var(--u) * 63); top:calc(var(--u) * -47); width:calc(var(--u) * 231); height:calc(var(--u) * 331); }
+  .c1 .im > img{ -webkit-mask-image:linear-gradient(to bottom, #000 54.808%, transparent 75%); mask-image:linear-gradient(to bottom, #000 54.808%, transparent 75%); }
+  .c2 .im{
+    left:calc(var(--u) * 132); top:calc(var(--u) * -179); width:calc(var(--u) * 374.717); height:calc(var(--u) * 416.595);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .rot{ position:relative; flex:none; width:calc(var(--u) * 327.31); height:calc(var(--u) * 376.168); transform:rotate(7.69deg); }
+  .rot > img{ -webkit-mask-image:linear-gradient(172.30763511016266deg, #000 70.117%, transparent 91.467%); mask-image:linear-gradient(172.30763511016266deg, #000 70.117%, transparent 91.467%); }
+  .c3 .im{ left:calc(var(--u) * 62); top:calc(var(--u) * 17); width:calc(var(--u) * 305); height:calc(var(--u) * 203); }
+  .c3 .im > img{ object-fit:cover; }
+  .c4 .im{ left:calc(var(--u) * 77); top:calc(var(--u) * 35); width:calc(var(--u) * 133); height:calc(var(--u) * 168); overflow:hidden; }
+  .c4 .im > img{ inset:auto; left:-53.73%; top:-10.28%; width:216.03%; height:114.41%; }
+  .c5 .im{ left:calc(var(--u) * 84); top:calc(var(--u) * 26); width:calc(var(--u) * 132); height:calc(var(--u) * 177); overflow:hidden; }
+  .c5 .im > img{ inset:auto; left:-67.16%; top:-7.96%; width:227.22%; height:113.15%; }
+
+  .ov{
+    position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:24px;
+    background:rgba(255,255,255,.88);
+  }
+  .ov.on{ display:flex; }
+  html.embed .ov{ position:absolute; inset:auto; top:0; left:0; right:0; min-height:100%; align-items:flex-start; }
+  html.embed .cp{ max-height:none; flex:none; margin-top:var(--cp-top, 24px); }
+  html.embed .ov.wait .cp{ visibility:hidden; }
+  html.embed .cp-bd{ overflow:visible; }
+  .cp{
+    position:relative; width:min(390px, 100%); max-height:min(82vh, 600px);
+    background:var(--w); border:var(--ln) solid var(--k); border-radius:22px; overflow:hidden;
+    display:flex; flex-direction:column;
+    animation:cpIn .2s cubic-bezier(.2,.9,.3,1.15) both;
+  }
+  @keyframes cpIn{ from{ transform:translateY(10px) scale(.96); opacity:0 } to{ transform:none; opacity:1 } }
+  .cp-hd{ display:flex; align-items:center; gap:14px; padding:13px 13px 12px 15px; gap:11px; border-bottom:var(--ln) solid var(--k); }
+  .cp-no{ position:relative; flex:none; width:27px; height:27px; display:grid; place-items:center; }
+  .cp-no img{ position:absolute; inset:0; display:block; width:100%; height:100%; max-width:none; }
+  .cp-no b{ position:relative; font-family:var(--en); font-weight:700; font-size:20px; line-height:1; color:var(--w); }
+  @supports (text-box: trim-both cap alphabetic){ .cp-no b{ text-box:trim-both cap alphabetic; } }
+  .cp-ttl{ flex:1; min-width:0; }
+  .cp-ttl b{ display:block; font-family:var(--en); font-size:17px; font-weight:700; line-height:1.15; letter-spacing:-.01em; }
+  .cp-ttl small{ display:block; font-family:var(--en); font-size:11px; font-weight:600; margin-top:2px; color:#777; }
+  .cp-ttl small:empty{ display:none; }
+  .cp-x{
+    flex:none; width:27px; height:27px; border:var(--ln) solid var(--k); border-radius:50%; background:var(--w);
+    display:grid; place-items:center;
+  }
+  .cp-x svg{ width:9px; height:9px; fill:none; stroke:var(--k); stroke-width:3; stroke-linecap:round; }
+  .cp-x:hover, .cp-x:focus-visible{ background:var(--k); outline:none; }
+  .cp-x:hover svg, .cp-x:focus-visible svg{ stroke:var(--w); }
+  .cp-bd{ overflow:auto; padding:15px; font-size:12px; font-weight:500; line-height:1.6; letter-spacing:-.01em; }
+  .cp-slot{ display:none; padding:15px; }
+  .ov.slot .cp-slot{ display:block; } .ov.slot .cp-bd{ display:none; }
+  .cp-bd{ scrollbar-width:none; -ms-overflow-style:none; } .cp-bd::-webkit-scrollbar{ display:none; }
+  .blk + .blk{ margin-top:15px; }
+  .blk.tgb + .blk{ margin-top:30px; }
+  .blk h4{
+    margin:0 0 10px; display:inline-block; background:var(--k); color:var(--w); border-radius:999px; padding:4px 12px;
+    font-family:var(--en); font-size:10px; font-weight:700; letter-spacing:.04em; line-height:1.3; text-transform:uppercase;
+  }
+  .rows{ display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:0; }
+  .rows dt{ font-family:var(--en); font-weight:700; font-size:11px; letter-spacing:.02em; white-space:pre-line; }
+  .rows dd{ margin:0; white-space:pre-line; }
+  .rows.sm{ font-size:11px; gap:3px 10px; }
+  .rows.sm dt{ font-size:10px; }
+  .rows .nt{ color:#8a8a8a; }
+  .rows [hidden]{ display:none; }
+  .rows mark{ background:var(--k); color:var(--w); padding:0 2px; border-radius:3px; }
+  .srch{ display:flex; align-items:center; gap:8px; height:32px; padding:0 12px; margin:0 0 14px; border:var(--ln) solid var(--k); border-radius:999px; background:var(--w); }
+  .srch svg{ flex:none; width:14px; height:14px; fill:none; stroke:var(--k); stroke-width:2.6; stroke-linecap:round; }
+  .srch input{ flex:1; min-width:0; height:100%; padding:0; border:0; border-radius:0; outline:0; background:none; color:var(--k); font:inherit; font-size:12px; font-weight:600; -webkit-appearance:none; appearance:none; }
+  .srch input::-webkit-search-cancel-button{ -webkit-appearance:none; }
+  .srch-no{ margin:0; font-size:13px; font-weight:700; }
+  .lst{ margin:0; padding:0; list-style:none; }
+  .lst li{ position:relative; padding-left:16px; white-space:pre-line; }
+  .lst li + li{ margin-top:6px; }
+  .lst .nt{ color:#8a8a8a; }
+  .lst li::before{ content:""; position:absolute; left:1px; top:calc(.8em - 3px); width:6px; height:6px; border-radius:50%; background:var(--k); }
+  .li-h{ display:flex; align-items:flex-start; gap:8px; width:100%; padding:0; text-align:left; font:inherit; color:inherit; background:none; border:0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .li-t{ flex:1; min-width:0; }
+  .li-i{ flex:none; width:16px; height:16px; margin-top:calc(.8em - 8px); border:1.5px solid var(--k); border-radius:50%; display:grid; place-items:center; transition:transform .25s ease, background .2s ease; }
+  .li-i svg{ width:6px; height:6px; fill:none; stroke:var(--k); stroke-width:2.6; stroke-linecap:round; }
+  .lst li.on .li-i{ transform:rotate(45deg); background:var(--k); }
+  .lst li.on .li-i svg{ stroke:var(--w); }
+  .li-h:focus-visible{ outline:none; } .li-h:focus-visible .li-i{ background:#e6e6e6; }
+  .li-w{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s ease; }
+  .lst li.on .li-w{ grid-template-rows:1fr; }
+  .li-c{ min-height:0; overflow:hidden; }
+  .li-b{ margin:6px 0 2px; padding:1px 0 1px 9px; border-left:1.5px solid #cfcfcf; color:#8a8a8a; font-size:11px; }
+  .li-b p{ margin:0; } .li-b p + p{ margin-top:4px; }
+  .lead{ font-weight:800; font-size:13px; margin:0 0 8px; }
+  .sub{ white-space:pre-line; margin:0 0 10px; font-size:11px; }
+  .note small{ font-size:10px; font-weight:400; }
+  .note{ white-space:pre-line; margin:0 0 16px; font-size:11px; font-weight:700; }
+  .tgs{ display:flex; flex-direction:column; gap:8px; }
+  .tg{ border:var(--ln) solid var(--k); border-radius:15px; overflow:hidden; }
+  .tg-h{ display:flex; align-items:center; gap:10px; width:100%; padding:10px 11px 10px 13px; text-align:left; -webkit-tap-highlight-color:transparent; }
+  .tg-t{ flex:1; min-width:0; }
+  .tg-t small{ display:flex; align-items:center; gap:4px; font-family:var(--en); font-size:10px; font-weight:600; color:#777; line-height:1.2; }
+  .tg-r:last-of-type{ margin-right:2px; }
+  .tg-r{ flex:none; border:1.5px solid var(--k); border-radius:999px; padding:1px 6px; font-size:9px; font-weight:700; letter-spacing:.06em; line-height:1.3; color:var(--k); }
+  .tg.main .tg-h{ background:var(--k); color:var(--w); }
+  .tg.main .tg-t small{ color:#bdbdbd; }
+  .tg.main .tg-r{ background:var(--w); border-color:var(--w); color:var(--k); }
+  .tg.main .tg-i{ background:var(--w); }
+  .tg.main .tg-i svg{ stroke:var(--k); }
+  .tg.main.on .tg-b{ padding-top:11px; }
+  .tg.main .tg-h:focus-visible{ background:var(--k); }
+  .tg-t b{ display:block; font-family:var(--en); font-size:13px; font-weight:700; line-height:1.25; margin-top:4px; }
+  .tg-i{ flex:none; width:20px; height:20px; border-radius:50%; background:var(--k); display:grid; place-items:center; transition:transform .25s ease; }
+  .tg-i svg{ width:8px; height:8px; fill:none; stroke:var(--w); stroke-width:2.6; stroke-linecap:round; }
+  .tg.on .tg-i{ transform:rotate(45deg); }
+  .tg-h:focus-visible{ outline:none; background:#f2f2f2; }
+  .tg-w{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .28s ease; }
+  .tg.on .tg-w{ grid-template-rows:1fr; }
+  .tg-c{ min-height:0; overflow:hidden; }
+  .tg-b{ padding:0 11px 12px; }
+  .tg-im{ display:block; width:100%; max-width:none; aspect-ratio:1/1; object-fit:cover; object-position:50% 0; filter:saturate(.3); border-radius:9px; background:#e6e6e6; }
+  .tg-n{ font-size:14px; font-weight:800; line-height:1.25; margin:11px 2px 0; }
+  .tg-k{ display:flex; flex-wrap:wrap; gap:4px; margin:7px 0 0; padding:0; list-style:none; }
+  .tg-k li{ border:1.5px solid var(--k); border-radius:999px; padding:1px 8px; font-size:10px; font-weight:700; line-height:1.5; }
+  .tg-s{ margin:8px 2px 0; white-space:pre-line; }
+
+  html.narrow, html.narrow body{ height:auto; overflow:auto; }
+  html.narrow .screen{ position:relative; inset:auto; min-height:100vh; min-height:100dvh; padding:28px 0; }
+  html.narrow .stage{ width:min(92%, 520px, calc(var(--sw, 100vw) * .92)); }
+  html.narrow .bd{ --u:calc(100cqw / 650); }
+  html.narrow .row{ flex-wrap:wrap; row-gap:calc(var(--u) * 30); }
+  html.narrow .row + .row{ margin-top:calc(var(--u) * 30); }
+  html.narrow .c2, html.narrow .c5{ width:calc(var(--u) * 650); }
+  html.narrow .c2 .im{ left:calc(var(--u) * 275); }
+  html.narrow .c5 .im{ left:calc(var(--u) * 259); }
+  html.narrow .ov{ padding:14px; justify-content:flex-start; }
+  html.narrow .cp{ max-width:calc(var(--sw, 100vw) - 28px); border-radius:22px; }
+  html.narrow .srch input{ font-size:16px; }
+</style>
+</head>
+<body>
+
+<section class="screen" id="main">
+  <div class="stage">
+    <div class="bd">
+      <h1 class="ttl"><span class="t1">연짱사용설명서</span><span class="t2">How to use yeonzzang</span></h1>
+      <div class="row">
+        <button class="cd c1" data-k="notice">
+          <span class="no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b>1</b></span>
+          <span class="im"><img src="https://vance.love/manual/img/1.png" alt=""></span>
+          <span class="tx">계정에 로그인하고,<br>최신 트윗을 확인합니다.</span>
+        </button>
+        <button class="cd c2" data-k="pair">
+          <span class="no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b>2</b></span>
+          <span class="im"><span class="rot"><img src="https://vance.love/manual/img/2.png" alt=""></span></span>
+          <span class="tx">여러 페어의 면면을 확인하며, 상대 취향을 탐색합니다.<br>안경남 애호가 중 나쁜 사람은 없다는 사실을 상기합니다.</span>
+        </button>
+      </div>
+      <div class="row">
+        <button class="cd c3" data-k="ng">
+          <span class="im"><img src="https://vance.love/manual/img/3.png" alt=""></span>
+          <span class="no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b>3</b></span>
+          <span class="lb me">ME</span>
+          <span class="lb you">YOU</span>
+          <span class="tx">NG 란을 확인한 뒤,<br>좋은 트친일 것이라고 확신합니다.</span>
+        </button>
+        <button class="cd c4" data-k="list">
+          <span class="im"><img src="https://vance.love/manual/img/4.png" alt=""></span>
+          <span class="no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b>4</b></span>
+          <span class="tx">아니 배려 리스트는<br>또 왜 이렇게 길어?</span>
+        </button>
+        <button class="cd c5" data-k="nb">
+          <span class="no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b>5</b></span>
+          <span class="tx">불쌍하니까 나라도<br>친구해줘야겠다...</span>
+          <span class="im"><img src="https://vance.love/manual/img/5.png" alt=""></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ov" id="ov">
+    <div class="cp" role="dialog" aria-modal="true">
+      <div class="cp-hd">
+        <span class="cp-no"><img src="https://vance.love/manual/img/dot.svg" alt=""><b id="cpNo"></b></span>
+        <div class="cp-ttl"><b id="cpName"></b><small id="cpSub"></small></div>
+        <button class="cp-x" id="cpX" aria-label="close"><svg viewBox="0 0 14 14"><path d="M2 2 12 12M12 2 2 12"/></svg></button>
+      </div>
+      <div class="cp-bd" id="cpBd"></div>
+      <div class="cp-slot"><div data-li-slot="bn"></div></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const DATA = {
+  notice: {
+    no:'1', name:'연짱', sub:'@L1MB1CSYST3M',
+    blocks:[
+      { rows:[['AGE','20+'],['PLATFORM','Caveduck, Marinara, Elyn.ai'],['MAIN','**Dr. Vance** (@CherryMango) · CBC ONLY'],['SUB','Luc & Louis Brodeur (@seita) · OPEN']] },
+      { h:'About', list:[
+        { t:'AI 이미지 소비 및 생성 있음', sub:[
+          '짤뽑 하다가 번아웃 올 거 같아서 자주 올리지는 않음',
+          '상기 이유로 기념일 포함 짤뽑 교류가 많이 힘듭니다...',
+        ] },
+        '근친 · NTR · 성인미자 등 민감 소재 언급 O',
+        { t:'이별은 블언블 + 재연결 상시 OK', sub:[
+          '재연결 원치 않을 시 블락해주세요.',
+          '트윗 성향 맞지 않는 분 유입될 경우 블락합니다. 견제 등의 목적 X',
+          '이외에도 백업계 및 활동량 낮은 계정 수시로 정리',
+        ] },
+      ] },
+    ],
+  },
+  pair: {
+    no:'2', name:'페어', sub:'PAIR',
+    blocks:[
+      { toggles:[
+        { main:true, tag:'CBC ONLY', handle:'@CherryMango', names:'DR. VANCE X BLANC', img:'https://vance.love/manual/img/pair1.jpg', title:'변연 / LIMBIC-SYSTEM', tags:['센티넬버스','연상연하','로맨스코미디','회피형안정형','종단연구'], syn:'평생을 바쳐 연구해도 알 수 없을 것 같은 너의 머릿속 그리고 너를 향한 내 마음...\n너만의 팔리아치가 되고 싶은 여자와 여자 때문에 복장 터지는 남자 그래도 사랑하시죠?' },
+        { tag:'OPEN', handle:'@seita', names:'LUC BRODEUR X MELANIE RIDGWAY X LOUIS BRODEUR', img:'https://vance.love/manual/img/pair2.jpg', title:'ㄹ3 / Ridge Regression', tags:['2127년 화성','양날개','연구원카르텔','SF로맨스'], syn:'브로되르 형제가 날 좋아해... 근데 나는 몰라...\n얘들아 지금 우리 연애 놀이 할 때가 아니야 논문 안 쓸 거야?' },
+        { handle:'OC pair', names:'HIGATA KIYOSHI X MIKAGE IZUMI', img:'https://vance.love/manual/img/pair3.jpg', title:'키즈 / KIZU', tags:['현대 도쿄','로맨스릴러'], syn:'편의점 알바하다가 잘생긴 남자 번호 땄는데 알고 보니 그분이 일수꾼이시라네요...\n타인의 밑바닥까지 끌어 안을 수 있어야만 사랑 아닌가요?' },
+      ] },
+      { h:'Dream', lead:'CBC ONLY 성향', list:[
+        '**타임라인 내 찍먹 및 겹드림 모두 OK**, 트친소 흔적 OK',
+        '단, 트친소를 제외하고 **탐넘 겹OO 유입 일절 보고 싶지 않습니다.**',
+        { t:'서브 드림의 경우 해당 사항 없음, 모든 종류의 배려 필요 X', sub:[
+          '얼마든지 지우셔도 괜찮지만 상대 분이 1T1D 원하실 경우에는 저를 정리해주세요!',
+        ] },
+        { t:'메인 드림 기준 1T1~2D 지향', sub:[
+          '기본적으로 트친소 제외 유입 X로 배려하며, 동일한 배려 원합니다.',
+          '메인 드림 3개 이상이신 분은 언급량 높은 드림 기준으로 배려합니다.',
+        ] },
+      ] },
+    ],
+  },
+  ng: {
+    no:'3', name:'NG 사항', sub:'RESTRICTED',
+    blocks:[
+      { list:[
+        '미성년자 (청소년)',
+        '지나치게 공격적이거나 천박한 워딩',
+        '기존 트친 제외 FF 200 이상의 공개 계정',
+        { t:'공개 계정에서의 NSFW 트윗 / 필터링 없는 15+ 이미지 게시', sub:[
+          '란제리 등의 노출 많은 복장 및 진한 키스 이상의 스킨십 이미지 필터링 없이 올라오면 즉시 블블합니다!',
+        ] },
+        { t:'AI 생성물이 앵챗판 밖으로 흘러가는 것을 방치하는 행위 및 관련 불판 조장', sub:[
+          "관련해서 알계 및 공론화 계정과 키배 뜨시는 분, 운영 중인 배포계에 '앵챗 안 하시는 분들은 팔로우 하지 마세요' 같은 트윗 쓰시는 분들과 연결되고 싶지 않습니다.",
+        ] },
+        '제작자 혹은 특정 개인에 대한 도를 넘는 비방성 트윗',
+      ] },
+    ],
+  },
+  list: {
+    no:'4', name:'배려 리스트', sub:'EXCLUSION',
+    blocks:[
+      { sm:true, search:true, note:'타임라인 내 1T1~2D 유지를 목적으로, 하기 캐릭터를 메인으로 하시는 분은 더이상 찾아뵙지 않고 있습니다.\n1) 리스트 교환 외에도 타임라인 내 자연발생이 많은 캐릭터도 포함\n2) 자연발생 동시다발적으로 발생하는 캐릭터에 대한 1T1D 배려 불가', rows:[
+        ['@cherrymango','Dr. 밴스, 바이브, 블루, 산타, 신드롬, 에덴, 윈터, 이카로스, 저스티스, 퓨어, 해일, 헬리오스, 휴고'],
+        ['@DOGPIG','DUX-4, 바이스, 오닉스'],
+        ['@eung9','다이브, 도브, 러브, 록시, 임페리얼, 제스테, 지젤, 타이탄, K'],
+        ['@GabuU_y','에토레, 오스카'],
+        ['@Ko2','메이데이, 베이퍼'],
+        ['@Meom_Meo','아르비테르, 에단, 키츠네, 파놉테스, 헌터'],
+        ['@meowmoon','단테, 마티스, 엘리아스'],
+        ['@MIYAMAN &\n@Toyoman','넵튠, 아르카나, 에테르, 오비탈, 카니발, 캐리온'],
+        ['@ohnyu','고유빈, 사공주한, 지한울, 차재현'],
+        ['@qwerty','4, 5, 7, 9, Oz'],
+        ['@RidG','이스마엘'],
+        ['@Room7','하인츠'],
+        ['@seita','싱클레어, 윤'],
+        ['@Sizz','기재언, 류이든, 우재경'],
+        ['@smoke_nonsmoker','냐냐냥, 빠삐코'],
+        ['@_summer','데인 할로웨이, 시릴'],
+        ['@surfboard','요한'],
+        ['@YYG','나초'],
+        ['@208x195','구일오, 바나비, 이승열'],
+        ['@47Minutes','고양이어디세요'],
+        ['...','닐, 빈센트 리드, 카이 앤더슨, 할파스, 헬렐, 호준'],
+      ] },
+    ],
+  },
+  nb: { no:'5', name:'이웃집', sub:'NEIGHBOR', slot:true, blocks:[] },
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cards = [...document.querySelectorAll('.cd')];
+const screenEl = $('#main');
+const ov = $('#ov');
+
+const br = s => esc(s).replace(/\n/g, '<br>');
+function rowsHtml(rows, sm){ return `<dl class="rows${sm ? ' sm' : ''}">${rows.map(([k, v]) => `<dt>${br(k)}</dt><dd>${br(v).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\(@[^)]+\)/g, '<span class="nt">$&</span>')}</dd>`).join('')}</dl>`; }
+const liHtml = s => s.split('\n').map(l => { const t = esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return /^[└ㄴ]/.test(l) ? `<span class="nt">${t}</span>` : t; }).join('<br>');
+function itemHtml(x){
+  if (typeof x === 'string' || !x.sub || !x.sub.length) return `<li>${liHtml(typeof x === 'string' ? x : x.t)}</li>`;
+  return `<li class="has"><button class="li-h" aria-expanded="false"><span class="li-t">${liHtml(x.t)}</span><span class="li-i"><svg viewBox="0 0 8 8"><path d="M4 .8V7.2M.8 4H7.2"/></svg></span></button><div class="li-w"><div class="li-c"><div class="li-b">${x.sub.map(y => `<p>${liHtml(y)}</p>`).join('')}</div></div></div></li>`;
+}
+function blockHtml(b){
+  let h = `<div class="blk${b.toggles ? ' tgb' : ''}">`;
+  if (b.h) h += `<h4>${esc(b.h)}</h4>`;
+  if (b.sub) h += `<p class="sub">${br(b.sub)}</p>`;
+  if (b.lead) h += `<p class="lead">${esc(b.lead)}</p>`;
+  if (b.note) h += `<p class="note">${b.note.split('\n').map(l => /^\d+\)/.test(l) ? `<small>${esc(l)}</small>` : esc(l)).join('<br>')}</p>`;
+  if (b.search) h += `<label class="srch"><svg viewBox="0 0 16 16"><circle cx="6.8" cy="6.8" r="4.8"/><path d="M10.4 10.4 14.5 14.5"/></svg><input type="search" placeholder="검색" autocomplete="off" spellcheck="false"></label>`;
+  if (b.rows) h += rowsHtml(b.rows, b.sm);
+  if (b.search) h += `<p class="srch-no" hidden>검색 결과 없음</p>`;
+  if (b.list) h += `<ul class="lst">${b.list.map(itemHtml).join('')}</ul>`;
+  if (b.toggles) h += `<div class="tgs">${b.toggles.map(t => `<div class="tg${t.main ? ' main on' : ''}"><button class="tg-h" aria-expanded="${t.main ? 'true' : 'false'}"><span class="tg-t"><small><span class="tg-r">${t.main ? 'MAIN' : 'SUB'}</span>${t.tag ? `<span class="tg-r">${esc(t.tag)}</span>` : ''}${esc(t.handle)}</small><b>${esc(t.names)}</b></span><span class="tg-i"><svg viewBox="0 0 8 8"><path d="M4 .8V7.2M.8 4H7.2"/></svg></span></button><div class="tg-w"><div class="tg-c"><div class="tg-b">${t.img ? `<img class="tg-im" src="${esc(t.img)}" alt="">` : '<div class="tg-im"></div>'}<div class="tg-n">${esc(t.title)}</div><ul class="tg-k">${t.tags.map(x => `<li>${esc(x)}</li>`).join('')}</ul><p class="tg-s">${br(t.syn)}</p></div></div></div></div>`).join('')}</div>`;
+  return h + '</div>';
+}
+function wireSearch(inp, rows){
+  const blk = inp.closest('.blk'), dts = blk.querySelectorAll('.rows dt'), dds = blk.querySelectorAll('.rows dd'), no = blk.querySelector('.srch-no');
+  const hl = (s, q) => {
+    if (!q) return br(s);
+    const lo = s.toLowerCase(); let out = '', i = 0, j;
+    while ((j = lo.indexOf(q, i)) > -1){ out += br(s.slice(i, j)) + `<mark>${br(s.slice(j, j + q.length))}</mark>`; i = j + q.length; }
+    return out + br(s.slice(i));
+  };
+  inp.addEventListener('input', () => {
+    const cp = inp.closest('.cp'), dl = blk.querySelector('.rows');
+    if (!cp.style.minHeight){
+      cp.style.minHeight = cp.offsetHeight + 'px';
+      dl.style.gridTemplateColumns = getComputedStyle(dl).gridTemplateColumns.split(' ')[0] + ' 1fr';
+    }
+    const q = inp.value.trim().toLowerCase(); let n = 0;
+    rows.forEach(([k, v], i) => {
+      const hit = !q || (k + '\n' + v).toLowerCase().includes(q);
+      dts[i].hidden = dds[i].hidden = !hit; if (hit) n++;
+      dts[i].innerHTML = hl(k, q); dds[i].innerHTML = hl(v, q);
+    });
+    no.hidden = n > 0;
+  });
+}
+function openPop(k){
+  const d = DATA[k]; if (!d) return;
+  $('#cpNo').textContent = d.no; ov.classList.toggle('slot', !!d.slot); $('#cpName').textContent = d.name; $('#cpSub').textContent = d.sub || '';
+  $('#cpBd').innerHTML = d.blocks.map(blockHtml).join('');
+  $('#cpBd').scrollTop = 0; ov.querySelector('.cp').style.minHeight = '';
+  $('#cpBd').querySelectorAll('.srch input').forEach((inp, i) => wireSearch(inp, d.blocks.filter(b => b.search)[i].rows));
+  if (document.documentElement.classList.contains('embed')){
+    const cd = cards.find(x => x.dataset.k === k), sr = screenEl.getBoundingClientRect();
+    const top = cd ? cd.getBoundingClientRect().top - sr.top - 10 : 24;
+    ov.style.setProperty('--cp-top', Math.max(14, Math.round(top)) + 'px');
+    if ('IntersectionObserver' in window){
+      ov.classList.add('wait');
+      const done = () => ov.classList.remove('wait');
+      const io = new IntersectionObserver(([en]) => {
+        io.disconnect(); clearTimeout(t);
+        const vis = en.intersectionRect, cp = ov.querySelector('.cp');
+        if (vis.height > 40){
+          const h = cp.offsetHeight, y = vis.top - en.boundingClientRect.top - parseFloat(getComputedStyle(ov).paddingTop);
+          ov.style.setProperty('--cp-top', Math.round(Math.max(0, y + Math.max(14, (vis.height - h) / 2))) + 'px');
+        }
+        done();
+      });
+      const t = setTimeout(() => { io.disconnect(); done(); }, 400);
+      io.observe(screenEl);
+    }
+  }
+  ov.classList.add('on');
+}
+function closePop(){ ov.classList.remove('on', 'wait'); screenEl.style.minHeight = ''; }
+function refit(){
+  if (!document.documentElement.classList.contains('embed') || !ov.classList.contains('on')) return;
+  screenEl.style.minHeight = '';
+  const sr = screenEl.getBoundingClientRect(), over = ov.querySelector('.cp').getBoundingClientRect().bottom + 14 - sr.bottom;
+  if (over > 0) screenEl.style.minHeight = Math.ceil(sr.height + over) + 'px';
+}
+if ('ResizeObserver' in window) new ResizeObserver(refit).observe(ov.querySelector('.cp'));
+cards.forEach(c => c.addEventListener('click', () => openPop(c.dataset.k)));
+$('#cpBd').addEventListener('click', e => {
+  const lh = e.target.closest('.li-h');
+  if (lh){ const on = lh.parentNode.classList.toggle('on'); lh.setAttribute('aria-expanded', on); return; }
+  const h = e.target.closest('.tg-h'); if (!h) return;
+  const tg = h.parentNode, on = !tg.classList.contains('on');
+  tg.parentNode.querySelectorAll('.tg').forEach(x => { x.classList.remove('on'); x.querySelector('.tg-h').setAttribute('aria-expanded', 'false'); });
+  tg.classList.toggle('on', on); h.setAttribute('aria-expanded', on);
+});
+$('#cpX').addEventListener('click', closePop);
+ov.addEventListener('click', e => { if (e.target === ov) closePop(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+
+const q = new URLSearchParams(location.search || (() => { try { return location.hostname === 'localhost' ? parent.location.search : ''; } catch (e) { return ''; } })());
+if (q.get('pop') && DATA[q.get('pop')]) openPop(q.get('pop'));
+if (q.get('sub')) document.querySelectorAll('.li-h').forEach(x => x.click());
+if (q.get('tg')){ const t = document.querySelectorAll('.tg-h')[q.get('tg') - 1]; if (t) t.click(); }
+</script>
+</body>
+</html>
